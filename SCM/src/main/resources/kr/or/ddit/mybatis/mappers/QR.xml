@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.common.lecturePage.qrCheck.dao.QRDao">
+
+
+	<select id="checkStudent" parameterType="hashmap" resultType="int">
+		SELECT 
+			TO_NUMBER(COUNT(*)) 
+		FROM(
+    		SELECT 
+    			CLASS_NO, MEM_NO, (SELECT MEM_NAME FROM MEMBER WHERE MEM_NO = MEM_ID) MEM_NAME 
+			FROM 
+				CLASSLIST
+			) A
+		WHERE
+			CLASS_NO = #{classNo}
+		AND
+			MEM_NO = #{stuNo}
+		AND
+			MEM_NAME = #{stuName}
+	</select>
+
+	<insert id="attendStudent" parameterType="hashmap">
+		INSERT INTO
+			ATTENDANCE(
+			    ATDC_DATE
+			   ,CLASSLIST_NO
+			   ,CLASS_STUDENT
+			   ,ATDC_POINT
+			   ,CLASS_NO
+			) VALUES (
+				SYSDATE
+				,#{classListNo}
+				,#{stuNo}
+				,#{atdcPoint}
+				,#{classNo}
+			)		
+	</insert>
+	
+	
+	<select id="classInfo" parameterType="String" resultType="kr.or.ddit.vo.ClassVO">
+	SELECT
+	    CLASS_NO
+	   ,MEM_NO
+	   ,FAC_NO
+	   ,CLASS_CODE
+	   ,COLLEGE_CODE
+	   ,CLASS_ROOM
+	   ,CLASS_NAME
+	   ,CLASS_TIME
+	   ,CLASS_POINT
+	   ,CLASS_PERSON
+	   ,CLASS_MAX
+	   ,CLASS_ON
+	   ,CLASS_DELETE
+	   ,CLASS_EXTEND
+	   ,MAJOR_CODE
+	   ,CLASS_SEMESTER
+	   ,CLASS_DIVIDE
+	   ,CLASS_DATE
+	FROM
+	    CLASS
+	WHERE
+		CLASS_NO = #{classNo}
+	</select>
+	
+
+	<select id="classListInfo" parameterType="hashmap" resultType="kr.or.ddit.vo.ClassListVO">
+	SELECT
+	    CLASSLIST_NO
+	   ,CLASS_NO
+	   ,MEM_NO
+	   ,CLASS_DATE
+	   ,CLASS_SEMESTER
+	   ,CLASS_STATE
+	   ,CLASS_MID
+	   ,CLASS_FIN
+	   ,CLASS_SCORE
+	   ,CLASS_RETAKE
+	   ,CLASS_CONT
+	   ,CLASS_CODE
+	FROM
+	    CLASSLIST
+	WHERE
+		CLASS_NO = #{classNo }
+	AND
+		MEM_NO = #{stuNo }
+	</select>
+
+</mapper>

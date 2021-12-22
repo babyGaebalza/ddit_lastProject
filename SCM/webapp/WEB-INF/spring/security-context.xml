@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans	xmlns="http://www.springframework.org/schema/security"  
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:c="http://www.springframework.org/schema/c"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-4.2.xsd">
+
+<!-- 입력된 암호를 인코딩-암호화 하는 passwordEncoder를 FactoryMethod패턴으로 생성 -->
+	<beans:bean id="passwordEncoder" class="org.springframework.security.crypto.factory.PasswordEncoderFactories" 
+		factory-method="createDelegatingPasswordEncoder" 
+	/> 
+	
+<!-- userDetailService는 DB에서 유저정보를 가져오고 유저가 없으면 UserNotfoundException 발생 -->
+	<beans:bean id="daoAuthenticationProvider" class="org.springframework.security.authentication.dao.DaoAuthenticationProvider" 
+		p:userDetailsService-ref="userDetailService"
+		p:passwordEncoder-ref="passwordEncoder"
+		p:hideUserNotFoundExceptions="false"
+	/>
+	
+<!-- 로그인을 검사하고 유지시켜주는 기능 -->
+	<authentication-manager id="authManager">
+		<authentication-provider ref="daoAuthenticationProvider" />
+	</authentication-manager>
+
+	<beans:bean id="grantedAuthorityDefaults" class="org.springframework.security.config.core.GrantedAuthorityDefaults" 
+		c:rolePrefix=""
+	/>
+
+
+	<beans:bean id="accessDecisionManager" class="org.springframework.security.access.vote.ConsensusBased"
+		p:allowIfEqualGrantedDeniedDecisions="false"
+		p:messageSource-ref="messageSource"
+	>
+		<beans:constructor-arg name="decisionVoters">
+			<beans:list>
+				<beans:bean class="org.springframework.security.access.vote.AuthenticatedVoter" />
+<!--  					권한 계층 구조 관련, RoleHierarchyImpl API 문서 참고. -->
+				<beans:bean class="org.springframework.security.access.vote.RoleHierarchyVoter"
+					p:rolePrefix="#{grantedAuthorityDefaults.rolePrefix}"
+				>
+					<beans:constructor-arg name="roleHierarchy">
+						<beans:bean class="org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl">
+							<beans:property name="hierarchy">
+								<beans:bean class="kr.or.ddit.security.auth.RoleHierarchyStringFactoryBean" />
+							</beans:property>
+						</beans:bean>
+					</beans:constructor-arg>
+				</beans:bean>
+			</beans:list>
+		</beans:constructor-arg>
+	</beans:bean>
+
+	
+	<beans:bean id="requestMap" class="kr.or.ddit.security.auth.RequestMapFactoryBean" />
+<!-- ↑↓ 자원접근권한을 DB에서 가져와 가공하는 bean들	 -->
+	<beans:bean id="filterInvocationSecurityMetadataSource" class="kr.or.ddit.security.auth.ReloadableFilterInvocationSecurityMetadataSource" 
+		c:requestMap-ref="requestMap"
+	/>
+
+<!-- 요청을 가로채 자원허가여부를 결정하는 'accessDecisionManager'에게 유저권한정보가 담긴 'authManager'와 자원접근정보가 담긴 'filterInvocationSecurityMetadataSource'을 전달해 요청자원 허가여부 결정 -->
+	<beans:bean id="filterSecurityInterceptor" class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor" 
+		p:authenticationManager-ref="authManager"
+		p:accessDecisionManager-ref="accessDecisionManager"
+		p:securityMetadataSource-ref="filterInvocationSecurityMetadataSource"
+		p:messageSource-ref="messageSource"
+	/>
+	
+	<beans:bean id="webInvocationPrivilegeEvaluator" class="org.springframework.security.web.access.DefaultWebInvocationPrivilegeEvaluator" 
+		c:securityInterceptor-ref="filterSecurityInterceptor"
+	/>
+	
+	<beans:bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource" 
+		p:basenames="kr.or.ddit.msgs.errorMessage,kr.or.ddit.msgs.message,org.springframework.security.messages"
+	/>
+	
+	<beans:bean id="messageSourceAccessor" class="org.springframework.context.support.MessageSourceAccessor" 
+		c:messageSource-ref="messageSource"
+	/>
+	
+	<beans:bean id="localeResolver" class="org.springframework.web.servlet.i18n.CookieLocaleResolver" 
+		p:cookieName="languageCookie"
+		p:cookieMaxAge="#{60*60*24*7}"
+		p:cookiePath="/"
+	/>
+	
+<!-- 	<beans:bean id="i18nSupportFilter" class="kr.or.ddit.filter.I18nSupportFilter" /> -->
+	
+	<beans:bean id="customAuthenticationSuccessHandler" class="kr.or.ddit.login.CustomAuthenticationSuccessHandler"/>
+	<beans:bean id="customAuthenticationFailureHandler" class="kr.or.ddit.login.CustomAuthenticationFailureHandler"/>
+	
+<!-- 필터체인 구성 -->
+		
+	<http authentication-manager-ref="authManager"
+		access-decision-manager-ref="accessDecisionManager"
+		auto-config="true"
+		use-expressions="true">
+		<form-login
+			login-page="/main.jsp"
+			login-processing-url="/login.do"
+			username-parameter="memId"
+			password-parameter="memPass"
+			default-target-url="/"
+			always-use-default-target="false"
+			authentication-success-handler-ref="customAuthenticationSuccessHandler"
+			authentication-failure-handler-ref="customAuthenticationFailureHandler"
+		/>
+		<logout logout-url="/logout.do" invalidate-session="true" logout-success-url="/" />
+		
+<!-- 	새로운 사용자가 접근하면 기본적으로 부여하는 권한 -->
+		<anonymous enabled="true" username="anonymous" granted-authority="IS_AUTHENTICATED_ANONYMOUSLY"/>
+		
+<!-- 		<custom-filter ref="i18nSupportFilter" before="FIRST"/> -->
+<!-- 	기존에 존재하는 FilterSecurityInterceptor 대체 -->
+		<custom-filter ref="filterSecurityInterceptor" before="FILTER_SECURITY_INTERCEPTOR"/>
+		<csrf disabled="true"/>
+		<headers>
+        	<frame-options policy="SAMEORIGIN"/>
+   		</headers>
+		
+	</http>
+	
+</beans:beans>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

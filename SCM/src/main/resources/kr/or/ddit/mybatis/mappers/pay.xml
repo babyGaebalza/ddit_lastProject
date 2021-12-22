@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.off_acc.pay.dao.payDao">
+
+ 	<sql id="searchFrag">
+	 		<if test='searchVO.searchWord2 neq "Y"'>
+				AND MEM_DELETE = 'N'
+			</if>
+	 		<if test='searchVO.searchWord2 eq "Y"'>
+				AND (MEM_DELETE = 'N' OR (MEM_DELETE = 'Y'))
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				<choose>
+					<when test="searchVO.searchType eq 'ADMIN'">
+					AND	(INSTR(USER_CODE, 'US01') > 0)
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'PROP'">
+					AND	INSTR(USER_CODE, 'US02') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'ASSIS'">
+					AND	INSTR(USER_CODE, 'US03') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'STUD'">
+					AND	INSTR(USER_CODE, 'US04') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<otherwise>
+					AND
+						(INSTR(USER_CODE, 'US01') > 0
+						OR INSTR(USER_CODE, 'US02') > 0
+						OR INSTR(USER_CODE, 'US03') > 0
+						OR INSTR(USER_CODE, 'US04') > 0)
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</otherwise>
+				</choose>
+			</if>
+
+	</sql> 
+	
+	 <sql id="searchFrag2">
+	 			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				<choose>
+					<when test="searchVO.searchType eq 'ADMIN'">
+					AND	(INSTR(USER_CODE, 'US01') > 0)
+					</when>
+					<when test="searchVO.searchType eq 'PROP'">
+					AND	INSTR(USER_CODE, 'US02') > 0
+					</when>
+					<when test="searchVO.searchType eq 'ASSIS'">
+					AND	INSTR(USER_CODE, 'US03') > 0
+					</when>
+					<when test="searchVO.searchType eq 'STUD'">
+					AND	INSTR(USER_CODE, 'US04') > 0
+					</when>
+					<otherwise>
+					AND
+						(INSTR(USER_CODE, 'US01') > 0
+						OR INSTR(USER_CODE, 'US02') > 0
+						OR INSTR(USER_CODE, 'US03') > 0
+						OR INSTR(USER_CODE, 'US04') > 0)
+					</otherwise>
+				</choose>
+			</if>
+			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE MEM_ID = C.MEM_ID), #{searchVO.searchWord}) > 0)
+			</if>
+	</sql> 
+
+
+ 	<sql id="searchFrag3">
+ 	PAY_STATE
+ 	,PAY_MEM
+ 	,PAY_DATE
+ 	</sql>
+
+
+	<select id="selectTotalRecord" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+	SELECT 
+		COUNT(*)
+	FROM 
+		MEMBER A
+	WHERE 
+		(USER_CODE = 'US01'
+	OR
+		USER_CODE = 'US02'
+	OR
+		USER_CODE = 'US03')
+			<include refid="searchFrag" /> 
+	</select>
+
+	<resultMap type="kr.or.ddit.vo.MemberVO" id="payTableMap" autoMapping="true">
+		<id property="memId" column="MEM_ID"/>
+		<collection property="payTableList" ofType="kr.or.ddit.vo.PayTableVO" autoMapping="true" />
+		<collection property="payList" ofType="kr.or.ddit.vo.PayVO" autoMapping="true" />
+	</resultMap>
+
+
+	<select id="selectPayTableList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="payTableMap">
+	SELECT
+		MEM_ID
+		,USER_CODE
+		,MEM_NAME
+		,MEM_REG1
+		,MEM_EMPNO
+		,RANK_CODE
+		,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = DEPT_CODE) DEPT_CODE
+		,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR) MEM_MAJOR
+		,MEM_DELETE
+		,PAYTABLE_MEM
+		,TO_CHAR(PAYTABLE_DATE, 'yyyy-mm-dd') as PAYTABLE_DATE
+		,TO_CHAR(PAY_DATE, 'yyyy-mm-dd') as PAY_DATE
+		,PAY_STATE
+		,PAY_REASON
+		,PAYTABLE_PAY
+	FROM(
+		SELECT E.*, PAY_DATE, PAY_STATE, PAY_REASON, ROWNUM RNUM
+		FROM (
+		
+			 SELECT * FROM   MEMBER C 
+                    LEFT OUTER JOIN       
+                    (
+                    SELECT B.* FROM (
+                                    SELECT PAYTABLE_MEM,MAX(PAYTABLE_DATE)AS PAYTABLE_DATE FROM PAYTABLE GROUP BY PAYTABLE_MEM
+                                    ) A 
+                                    LEFT OUTER JOIN
+                                    PAYTABLE B
+                                    ON A.PAYTABLE_DATE = B.PAYTABLE_DATE
+                    ) D
+                    ON C.MEM_ID = D.PAYTABLE_MEM
+                    
+					WHERE 
+						(USER_CODE = 'US01'
+					OR
+						USER_CODE = 'US02'
+					OR
+						USER_CODE = 'US03')
+					AND MEM_DELETE = 'N'
+		 			<include refid="searchFrag2" /> 
+			) E
+			
+			LEFT OUTER JOIN (
+                SELECT   PAY_DATE, PAY_MEM, 
+                        NVL(CASE WHEN PAY_STATE = 'Y' THEN '-' ELSE PAY_STATE END, '-') PAY_STATE,  
+                        PAY_REASON
+				FROM PAY ) Z
+            ON E.MEM_ID = Z.PAY_MEM
+						
+		) F
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]>
+
+	</select>
+
+
+
+
+
+	<select id="checkPaytable" parameterType="String" resultType="int">
+		SELECT 
+		    COUNT(*) 
+		FROM 
+		    PAYTABLE
+		WHERE
+		    PAYTABLE_MEM = #{memId}
+	</select>
+
+	<select id="checkAccount" parameterType="String" resultType="int">
+		SELECT
+		   	COUNT(*)
+		FROM
+		    ACCOUNT
+		WHERE
+			ACCOUNT_MEM = #{memId}
+	</select>
+
+
+	<select id="getAccount" parameterType="String" resultType="kr.or.ddit.vo.AccountVO">
+		SELECT
+		    ACCOUNT_NO
+		   ,ACCOUNT_MEM
+		   ,ACCOUNT_BANK
+		   ,ACCOUNT_NUMBER
+		   ,ACCOUNT_DELETE
+		FROM
+		    ACCOUNT
+		WHERE ACCOUNT_MEM = #{memId}
+			
+	</select>
+
+
+
+
+
+	<insert id="insertPay" parameterType="kr.or.ddit.vo.PayVO">
+		INSERT INTO PAY (
+		    PAY_NO
+		   ,PAY_MEM
+		   ,PAY_TPAY
+		   ,PAY_INSURANCE
+		   ,PAY_TAX
+		   ,PAY_FPAY
+		   ,PAY_BANK
+		   ,PAY_ACCOUNT
+		   ,PAY_STATE
+		   ,PAY_DATE
+		   ,PAY_FWRITER
+		) VALUES (
+			(SELECT NVL(MAX(TO_NUMBER(PAY_NO)), 0) + 1 FROM PAY)
+			,#{payMem, jdbcType=VARCHAR}
+			,#{payTpay, jdbcType=NUMERIC}
+			,#{payInsurance, jdbcType=NUMERIC}
+			,#{payTax, jdbcType=NUMERIC}
+			,#{payFpay, jdbcType=NUMERIC}
+			,#{payBank, jdbcType=VARCHAR}
+			,#{payAccount, jdbcType=VARCHAR}
+			,'N'
+			,SYSDATE
+			,#{payFwriter, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+
+	<select id="countSelectinputPayList" parameterType="kr.or.ddit.vo.PagingVO" resultType="int">
+		SELECT
+			COUNT(*)
+		FROM
+			PAY
+		<!-- <include refid="searchFrag3" />  -->	
+	</select>
+	
+	<select id="selectinputPayList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.PayVO">
+		SELECT
+		    PAY_NO
+		   ,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = PAY_MEM) PAY_MEM
+		   ,PAY_TPAY
+		   ,PAY_INSURANCE
+		   ,PAY_TAX
+		   ,PAY_FPAY
+		   ,PAY_BANK
+		   ,PAY_ACCOUNT
+		   ,PAY_STATE
+		   ,PAY_DATE
+		   ,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = PAY_FWRITER) PAY_FWRITER
+		FROM
+		    PAY
+		WHERE PAY_STATE = 'N'
+<!-- 		<include refid="searchFrag3" />  -->
+	</select>
+
+
+	<update id="insertFinalPay" parameterType="String">
+		UPDATE
+			PAY
+		SET
+			PAY_STATE = 'Y'
+		WHERE
+			PAY_NO = #{pay}
+	</update>
+	
+	<update id="canclePay" parameterType="kr.or.ddit.vo.PayVO">
+		UPDATE
+			PAY
+		SET
+			PAY_STATE = '반려'
+			,PAY_REASON = #{payReason }
+		WHERE
+			PAY_NO = #{payNo}
+	</update>
+
+	<insert id="pushPay" parameterType="String">
+		INSERT INTO PUSH (
+		    PUSH_NO
+		   ,PUSH_MEM
+		   ,PUSH_CODE
+		   ,PUSH_TITLE
+		   ,PUSH_CONT
+		   ,PUSH_DATE
+		) VALUES (
+			(SELECT NVL(MAX(TO_NUMBER(PUSH_NO)), 0) + 1 FROM PUSH)
+			,(SELECT PAY_MEM FROM PAY WHERE PAY_NO = #{pay})
+			,'P03'
+			,'급여알림입니다.'
+			,'귀하의 급여가 입금확인되었습니다.'
+			,SYSDATE
+		)
+	</insert>
+	
+	
+	<delete id="deletePay" parameterType="kr.or.ddit.vo.PayVO">
+		DELETE
+		FROM
+			PAY
+		WHERE
+			PAY_MEM = #{payMem}
+		AND
+			PAY_STATE = '반려'
+	</delete>
+
+</mapper>

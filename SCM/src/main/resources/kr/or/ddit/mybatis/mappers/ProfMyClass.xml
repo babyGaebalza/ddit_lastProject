@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.lecture.dao.LectureMainDAO">
+
+<select id="selectOngoingTaskSubmit" resultType="kr.or.ddit.vo.BoardVO">
+	SELECT
+	    BOARD_NO
+	  , BOARD_TITLE
+	  , TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE
+	  , TO_CHAR(BOARD_DEADLINE, 'YYYY/MM/DD') BOARD_DEADLINE
+	  , (SELECT COUNT(*) FROM TASK WHERE TASK.BOARD_NO = BOARD.BOARD_NO)||'/'||(SELECT COUNT(*) FROM CLASSLIST WHERE CLASS_NO = #{classNo}) "taskSubmitCount"
+	FROM
+	    BOARD
+	WHERE
+	    CLASS_NO = #{classNo}
+	    AND   BOARD_CODE = 'BC_302'
+	    AND   SYSDATE BETWEEN BOARD_DATE AND BOARD_DEADLINE
+	    AND   BOARD_DELETE = 'N'
+	ORDER BY
+	    BOARD_DEADLINE
+</select>
+
+
+<select id="selectMyClassList" parameterType="kr.or.ddit.vo.ClassVO" resultType="kr.or.ddit.vo.ClassVO">
+SELECT CLASS_NO, CLASS_NAME, CLASS_POINT, CLASS_TIME,
+      CLASS_DATE, CLASS_SEMESTER, CLASS_CODE
+FROM CLASS  
+WHERE MEM_NO = #{memNo}
+AND SUBSTR(TO_CHAR(CLASS_DATE, 'YYYY/MM/DD'),1,4) = #{classDate, jdbcType=VARCHAR} 
+AND SUBSTR(CLASS_SEMESTER,3,1) = #{classSemester, jdbcType=VARCHAR} 
+<if test="classCode neq null"> 
+and class_code = #{classCode}
+</if>
+AND CLASS_DELETE = 'N'
+ORDER BY CLASS_NAME
+</select>
+
+<select id="selectProfMajorName" resultType="string">
+select MAJOR_NAME
+from member, MAJOR 
+where mem_ID= #{memId}
+AND MEM_MAJOR = MAJOR_CODE
+</select>
+
+<select id="selectOneLecture" resultType="kr.or.ddit.vo.ClassVO">
+select  CLASS_NO, 
+        (select CATE_NAME1 from category where CATE_CODE
+        = (select COLLEGE_CODE FROM class where CLASS_NO = #{classNo})) as COLLEGE_CODE,  
+        (select CATE_NAME1 from category where CATE_CODE 
+        = (select MAJOR_CODE FROM class where  CLASS_NO = #{classNo})) as MAJOR_CODE, 
+        (select CATE_NAME1 from category where CATE_CODE 
+        = (select CLASS_CODE FROM class where CLASS_NO =#{classNo})) as CLASS_CODE,
+        fac_name as FAC_NO, CLASS_ROOM, CLASS_NAME, CLASS_TIME, CLASS_POINT, CLASS_PERSON,
+        CLASS_MAX, CLASS_ON,  CLASS_SEMESTER, CLASS_DIVIDE, CLASS_DATE
+from class CS left outer join  FACILITIES F on(CS.FAC_NO = F.FAC_NO)
+where CLASS_NO = #{classNo}  
+
+</select>
+
+
+<select id="selectClassList" parameterType="String" resultType="kr.or.ddit.vo.ClassListVO">
+	SELECT
+	    CLASSLIST_NO
+	   ,CLASS_NO
+	   ,MEM_NO
+	   ,CLASS_DATE
+	   ,CLASS_SEMESTER
+	   ,CLASS_STATE
+	   ,CLASS_MID
+	   ,CLASS_FIN
+	   ,CLASS_SCORE
+	   ,CLASS_RETAKE
+	   ,CLASS_CONT
+	   ,CLASS_CODE
+	FROM
+	    CLASSLIST
+	WHERE
+	    CLASS_NO = #{classNo }
+</select>
+
+
+
+<insert id="inputAttend" parameterType="kr.or.ddit.vo.ClassListVO">
+	INSERT INTO ATTENDANCE (
+	    ATDC_DATE
+	   ,CLASSLIST_NO
+	   ,CLASS_STUDENT
+	   ,ATDC_POINT
+	   ,ATDC_NOTE
+	   ,CLASS_NO
+		)
+	VALUES(
+		SYSDATE
+		,#{classlistNo}
+		,#{memNo}
+		,'2'
+		,'비대면출석'
+		,#{classNo}
+		)
+</insert>
+
+
+</mapper>

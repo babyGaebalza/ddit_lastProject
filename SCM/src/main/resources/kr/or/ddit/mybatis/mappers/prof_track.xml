@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.trackManage.dao.TrackProfessorDAO">
+<sql id="whereClause">
+where MAJOR_CODE = (select MEM_MAJOR from member where MEM_ID = #{searchVO.searchWord})		
+</sql>
+
+<sql id="searchFlag">
+		<where>
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'name'">
+						INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'address'">
+						MEM_ADD1 LIKE '%'||#{searchVO.searchWord}||'%'
+					</when>
+					<otherwise>
+						INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+						OR
+						MEM_ADD1 LIKE '%'||#{searchVO.searchWord}||'%'
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+<!-- 전체리스트 -->
+<select id="selectTrackList" resultType="kr.or.ddit.vo.TrackVO">
+select B.*
+from 
+(select ROWNUM RNUM,  a.*
+   from 
+   (select TRACK_NAME, TRACK_NO, TRACK_DELETE
+	  from track
+      <include refid="whereClause" />
+     order by track_name DESC) A
+)B
+where RNUM between #{startRow} and #{endRow}  
+</select>
+
+<!-- 전체컬럼수 -->
+<select id="selectTotalRecord" resultType="int">
+select count(*) 
+from track
+<include refid="whereClause" />
+<!-- <include refid="searchFlag"/> -->
+</select>
+
+<!-- 상세조회 -->
+<select id="selectTrackOne"  parameterType="string"  resultType="kr.or.ddit.vo.TrackVO" >
+select * from 
+track 
+where TRACK_NO = #{trackNo}
+</select>
+
+
+</mapper>

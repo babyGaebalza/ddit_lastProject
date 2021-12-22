@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_aca.trackmanage.dao.TrackManageDAO">
+
+<!-- 신청트랙 -->
+<sql id="searchFrag2">
+	<trim prefix=" WHERE " prefixOverrides="AND">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'major'">
+					AND INSTR(MEM_MAJOR, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'member'">
+					AND INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND
+					(INSTR(MEM_MAJOR, #{searchVO.searchWord}) > 0
+					OR INSTR(MEM_NAME, #{searchVO.searchWord}) > 0)
+				</otherwise>
+			</choose>
+		</if>
+	</trim>
+</sql>
+
+<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+	FROM DOCUMENT
+where docu_code = 'DOC17'
+</select>
+
+<resultMap type="kr.or.ddit.vo.DocumentVO" autoMapping="true" id="selectDocumentList">
+	<id column="DOCU_NO" property="docuNo"/>
+	
+	<association property="member1" autoMapping="true"/>
+	<association property="category1" autoMapping="true"/>
+</resultMap>
+<select id="selectDocumentList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="selectDocumentList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+			SELECT
+               docu_no, docu_state, docu_code, to_char(docu_reqdate,'YYYY-MM-DD') docu_reqdate, docu_filename
+               , mem_name, (select major_name from major where mem_major = major_code) MEM_MAJOR
+               , cate_code, cate_name1
+			FROM 
+	           DOCUMENT 
+	           , MEMBER
+	           , CATEGORY
+         	WHERE
+         		docu_req = mem_id
+         		and docu_code = cate_code
+         		and docu_code= 'DOC17'
+         	ORDER BY docu_no DESC
+           ) A  
+   		   <include refid="searchFrag2" />
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<resultMap type="kr.or.ddit.vo.DocumentVO" id="selectDocument" autoMapping="true">
+	<id column="DOCU_NO" property="docuNo"/>
+	
+	<association property="member1" autoMapping="true"/>
+	<association property="category1" autoMapping="true"/>
+</resultMap>
+<select id="selectDocument" parameterType="String" resultMap="selectDocument">
+select 
+	DOCU_NO, TO_CHAR(DOCU_REQDATE,'YYYY-MM-DD') DOCU_REQDATE, DOCU_STATE, DOCU_FILENAME, DOCU_APF, DOCU_CONT
+	,MEM_NAME, MEM_ID
+	,CATE_NAME1, CATE_CODE 
+from 
+	DOCUMENT,
+	MEMBER,
+	CATEGORY
+WHERE DOCU_REQ = MEM_ID
+	AND DOCU_CODE = CATE_CODE
+	AND DOCU_NO = #{docuNo}
+</select>
+
+<select id="selectDocumentPdf" parameterType="String" resultType="kr.or.ddit.vo.DocumentVO">
+select * from document
+where docu_no = #{docuNo}
+</select>
+
+<update id="updateDocument" parameterType="kr.or.ddit.vo.DocumentVO">
+UPDATE DOCUMENT
+SET
+	DOCU_STATE = #{docuState,jdbcType=VARCHAR},
+	DOCU_APF = #{docuApf,jdbcType=VARCHAR}
+WHERE 
+	DOCU_NO = #{docuNo,jdbcType=VARCHAR}
+</update>
+
+<update id="updateDocu" parameterType="kr.or.ddit.vo.DocumentVO">
+UPDATE DOCUMENT
+	SET DOCU_STATE = 'Y'
+WHERE
+	DOCU_NO = #{docuNo,jdbcType=VARCHAR}
+</update>
+
+<!-- 트랙 -->
+<sql id="searchFrag">
+	<trim prefix=" WHERE " prefixOverrides="AND">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'major'">
+					AND INSTR(MAJOR_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'track'">
+					AND INSTR(TRACK_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND
+					(INSTR(MAJOR_NAME, #{searchVO.searchWord}) > 0
+					OR INSTR(TRACK_NAME, #{searchVO.searchWord}) > 0)
+				</otherwise>
+			</choose>
+		</if>
+	</trim>
+</sql>
+
+<select id="selectTotalTrack" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+	FROM TRACK
+	<include refid="searchFrag" />
+</select>
+
+<select id="selectTrackList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.TrackVO">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+			SELECT
+               TRACK_NO, MAJOR_CODE, MAJOR_NAME
+			   , TRACK_NAME, TRACK_DELETE, to_char(TRACK_DATE,'YYYY-MM-DD') TRACK_DATE
+			FROM 
+				TRACK
+         	ORDER BY TRACK_NO DESC
+           ) A  
+			<include refid="searchFrag" />
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<resultMap type="kr.or.ddit.vo.TrackVO" id="trackListClass" autoMapping="true">
+	<id column="TRACK_NO" property="trackNo"/>
+	
+	<association property="trackList1" autoMapping="true"/>
+	<association property="class1" autoMapping="true"/>
+</resultMap>
+<select id="selectTrack" parameterType="String" resultMap="trackListClass">
+select 
+	a.TRACK_NO, a.MAJOR_CODE, a.MAJOR_NAME, a.TRACK_NAME, a.TRACK_DELETE, TO_CHAR(a.TRACK_DATE,'YYYY-MM-DD') track_date
+	, b.class_no
+	, c.class_name
+from 
+	TRACK a, trackList b, class c
+WHERE 
+	a.track_no = b.track_no
+	and b.class_no = c.class_no
+	and a.track_no = #{trackNo}
+</select>
+
+<select id="getClassList" resultType="kr.or.ddit.vo.TrackListVO">
+select 
+	track_no, (select class_name from class where class_no = b.class_no) class_no
+from 
+	tracklist b
+WHERE track_no =  #{trackNo}
+</select>
+
+<update id="updateTrack" parameterType="kr.or.ddit.vo.TrackVO">
+update track
+set
+	track_delete = #{trackDelete,jdbcType=VARCHAR}
+where
+	track_no = #{trackNo,jdbcType=VARCHAR}
+</update>
+
+<insert id="insertTrack" parameterType="kr.or.ddit.vo.TrackVO">
+	<selectKey keyProperty="trackNo" resultType="String" order="BEFORE">
+		SELECT TRACK_SEQ.NEXTVAL
+		FROM DUAL
+	</selectKey>
+		INSERT INTO TRACK (
+			TRACK_NO, 
+			MAJOR_CODE, 
+			MAJOR_NAME, 
+			TRACK_NAME, 
+			TRACK_DELETE, 
+			TRACK_DATE  
+		) VALUES (
+			#{trackNo,jdbcType=VARCHAR},
+			#{majorCode,jdbcType=VARCHAR},
+			#{majorName,jdbcType=VARCHAR},
+			#{trackName,jdbcType=VARCHAR},
+			'N',
+			SYSDATE
+		)
+</insert>
+
+
+
+<!-- 비동기 -->
+<select id="selectCollegeCode" resultType="hashMap">
+SELECT DISTINCT COLLEGE_CODE "collegeCode", COLLEGE_NAME "collegeName"
+	FROM MAJOR
+ORDER BY COLLEGE_NAME
+</select>
+
+<select id="selectMajorCode" resultType="hashMap">
+select major_code "majorCode", major_name "majorName"
+	from MAJOR
+WHere COLLEGE_CODE = #{collegeCode}
+</select>
+
+<!-- <select id="selectClassSemester" resultType="hashMap"> -->
+<!-- select DISTINCT class_semester "classSemester" -->
+<!-- from class -->
+<!-- where major_code = #{majorCode} -->
+<!-- </select> -->
+
+<select id="selectClassName" resultType="hashMap">
+select class_no "classNo", class_name "className", class_code "classCode"
+from class
+where  major_code = #{majorCode}
+and class_code = 'CL01'
+and CLASS_EXTEND IS NULL
+order by class_name
+</select>
+
+<select id="selectClassName2" resultType="hashMap">
+select class_no "classNo", class_name "className", class_code "classCode"
+from class
+where  major_code = #{majorCode}
+and class_code = 'CL02'
+and CLASS_EXTEND IS NULL
+order by class_name
+</select>
+
+<!-- 상태변경 -->
+<update id="update">
+update document
+set
+	docu_state = 'Y'
+where
+	docu_no = #{docuNo,jdbcType=VARCHAR}
+</update>
+
+<update id="updateState">
+update track
+set
+	track_delete = 'Y'
+where
+	track_no = #{trackNo,jdbcType=VARCHAR}
+</update>
+
+<insert id="insertTrackList" parameterType="kr.or.ddit.vo.TrackListVO">
+<selectKey keyProperty="trackNo" resultType="String" order="BEFORE">
+SELECT TRACK_SEQ.CURRVAL FROM DUAL
+</selectKey>
+insert into TRACKLIST (
+	 TRACK_NO, CLASS_NO 
+) values (
+ 	#{trackNo,jdbcType=VARCHAR},
+ 	#{classNo,jdbcType=VARCHAR}
+)
+</insert>
+
+<insert id="insertTrackListCLO2" parameterType="kr.or.ddit.vo.TrackListVO">
+insert into TRACKLIST ( track_no, CLASS_NO)
+select #{trackNo,jdbcType=VARCHAR} track_no, class_no 
+from class
+where class_code = 'CL02'
+and CLASS_EXTEND IS NULL
+order by class_name
+</insert>
+
+</mapper>

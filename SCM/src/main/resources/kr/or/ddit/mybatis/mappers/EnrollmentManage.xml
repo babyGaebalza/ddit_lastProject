@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.off_acc.enrollmentmanage.dao.EnrollmentManageDAO">
+
+<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+select count(*)
+from member, tuition
+where user_code = 'US04'
+	and MEM_ID = TUI_MEM
+</select>
+
+<resultMap type="kr.or.ddit.administration.vo.TuitionVO" id="studentList" autoMapping="true">
+	<id column="TUI_NO" property="tuiNo"/>
+	
+	<association property="member1" autoMapping="true"/>
+	<association property="major1" autoMapping="true"/>
+</resultMap>
+<select id="selectStudentList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="studentList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+           SELECT
+			    TUI_NO, MEM_ID, MEM_NAME, TUI_PAYMENT, 
+			    MAJOR_NAME
+		   FROM MEMBER, TUITION, MAJOR
+			    WHERE MEM_ID = TUI_MEM
+			    AND MEM_MAJOR = MAJOR_CODE
+			    AND USER_CODE = 'US04'
+           ORDER BY MEM_ID DESC
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<select id="selectTotalCheck" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+FROM TUITION
+where tui_mem = #{searchVO.searchWord2} 
+</select>
+
+<resultMap type="kr.or.ddit.administration.vo.TuitionVO" id="studentCheckList" autoMapping="true">
+	<id column="TUI_NO" property="tuiNo"/>
+	
+	<association property="member1" autoMapping="true"/>
+	<association property="major1" autoMapping="true"/>
+</resultMap>
+<select id="selectStudentCheckList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="studentCheckList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+           SELECT
+			    TUI_NO, MEM_ID, MEM_NAME, TUI_PAYMENT, 
+			    MAJOR_NAME
+		   FROM MEMBER, TUITION, MAJOR
+			    WHERE MEM_ID = TUI_MEM
+			    AND MEM_MAJOR = MAJOR_CODE
+			    AND USER_CODE = 'US04'
+			    AND tui_mem = #{searchVO.searchWord2}
+           ORDER BY MEM_ID DESC
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<insert id="insertTuition" parameterType="kr.or.ddit.administration.vo.TuitionVO">
+	<selectKey keyProperty="tuiNo" resultType="String" order="BEFORE">
+		SELECT TUITION_SEQ.NEXTVAL
+		FROM DUAL
+	</selectKey>
+	INSERT INTO TUITION(
+		TUI_NO,
+		TUI_MEM,
+		TUI_PAYMENT,
+		TUI_BANK,
+		TUI_ACCOUNT,
+		TUI_STATE
+	) VALUES (
+		 #{tuiNo,jdbcType=VARCHAR},
+		 #{tuiMem,jdbcType=VARCHAR},
+		 'Y',
+		 #{tuiBank,jdbcType=VARCHAR},
+		 #{tuiAccount,jdbcType=VARCHAR},
+		 'N'
+	)
+</insert>
+<!-- 신입생 -->
+<!-- <select id="selectNewStudentCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO"> -->
+<!-- select count(*) -->
+<!-- from member, tuition -->
+<!-- where user_code = 'US04' -->
+<!-- 	and MEM_ID = TUI_MEM -->
+<!-- 	and MEM_ENTDATE is null -->
+<!-- </select> -->
+
+<!-- <resultMap type="kr.or.ddit.administration.vo.TuitionVO" id="newStudentList" autoMapping="true"> -->
+<!-- 	<id column="TUI_NO" property="tuiNo"/> -->
+	
+<!-- 	<association property="member1" autoMapping="true"/> -->
+<!-- 	<association property="major1" autoMapping="true"/> -->
+<!-- </resultMap> -->
+<!-- <select id="selectNewStudentList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="newStudentList"> -->
+<!-- SELECT B.* -->
+<!-- FROM ( -->
+<!--    	SELECT A.*, ROWNUM RNUM -->
+<!--        FROM ( -->
+<!--            SELECT -->
+<!-- 			    TUI_NO, MEM_ID, MEM_NAME, TUI_PAYMENT,  -->
+<!-- 			    MAJOR_NAME -->
+<!-- 		   FROM MEMBER, TUITION, MAJOR -->
+<!-- 			    WHERE MEM_ID = TUI_MEM -->
+<!-- 			    AND MEM_MAJOR = MAJOR_CODE -->
+<!-- 			    AND USER_CODE = 'US04' -->
+<!-- 			    AND MEM_ENTDATE IS NULL -->
+<!--            ORDER BY MEM_ID DESC -->
+<!--            ) A   -->
+<!--        ) B  -->
+<!-- WHERE RNUM BETWEEN #{startRow} AND #{endRow} -->
+<!-- </select> -->
+
+</mapper>

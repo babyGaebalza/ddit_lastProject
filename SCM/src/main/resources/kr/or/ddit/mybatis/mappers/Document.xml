@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.document.dao.DocuDAO">
+<!-- 검색조건 : 작성자 본인것만, 삭제되지 않은 문서만 -->
+<sql id="searchFlag">
+    where  docu_cancle = 'N'
+	<if test="searchVO.searchWord neq null">
+    AND  docu_req = #{searchVO.searchWord}   
+    </if>	
+</sql>
+
+<!-- 전체 레코드 수  -->
+<select id="selectTotalRecord" resultType="int" >
+select count(*)
+from document 
+<include refid= "searchFlag" />
+</select>
+
+<!-- 트랙 추가시 강의리스트 -->
+<select id="selectMyMajorClassList" resultType="kr.or.ddit.vo.ClassVO">
+select  CLASS_NAME, 
+        CLASS_SEMESTER, CLASS_POINT, CLASS_NO, '전공선택'      
+        as  CLASS_CODE
+from class
+where MAJOR_CODE = #{memMajor}
+and CLASS_CODE = 'CL01' 
+and class_extend is null
+order by class_name
+
+</select>
+<!-- 내가 결재할 문서 카운트수 -->
+<select id="selectTodoDocuRecord" resultType="int">
+select count(*)
+from 
+((select DOCU_NO
+from document 
+where DOCU_AP1 = #{searchVO.searchWord} 
+and DOCU_REQNOW = 1
+) 
+UNION
+(select DOCU_NO
+from document 
+where DOCU_AP2 = #{searchVO.searchWord} 
+and DOCU_REQNOW = 2 
+and DOCU_REQCNT = 4
+) 
+UNION 
+(select DOCU_NO
+from document 
+where DOCU_APF = #{searchVO.searchWord} 
+and DOCU_REQNOW + 1 = DOCU_REQCNT
+))
+A
+</select>
+<!-- 내겨 결재할 문서리스트 출력 -->
+<select id="selectTodoDocuList" resultType="kr.or.ddit.vo.DocumentVO">
+SELECT B.*
+FROM 
+(SELECT  A.* , ROWNUM RNUM
+FROM 
+
+(SELECT DOCU_NO, MEM_NAME,  DOCU_FILENAME ,  CATE_NAME1
+FROM  DOCUMENT , CATEGORY, MEMBER
+WHERE CATE_CODE = DOCU_CODE 
+AND MEM_ID = DOCU_REQ
+AND DOCU_NO IN (
+
+(select DOCU_NO
+from document 
+where DOCU_AP1 = #{searchVO.searchWord}  
+and DOCU_REQNOW = 1
+) 
+UNION
+(select DOCU_NO
+from document 
+where DOCU_AP2 = #{searchVO.searchWord}
+and DOCU_REQNOW = 2 
+and DOCU_REQCNT = 4
+) 
+UNION 
+(select DOCU_NO
+from document 
+where DOCU_APF = #{searchVO.searchWord}
+and DOCU_REQNOW + 1 = DOCU_REQCNT
+)
+)
+ORDER BY DOCU_NO ASC
+) A
+) B
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+
+<!--내가 올린 결재문서 리스트 출력(삭제된거는 제외) -->
+<select id="selectMyDocuList" resultType="kr.or.ddit.vo.DocumentVO">
+SELECT B.*
+FROM 
+(SELECT A.*, ROWNUM RNUM 
+    FROM  
+        (SELECT
+            docu_no,  docu_code,
+            docu_filename, MEM_Name as "docuReq",
+			to_char(docu_reqdate,'YYYY/MM/DD') as docu_reqdate,
+              case when docu_state   = 'N'   then '미완'
+                 when docu_state   = 'Y'   then '완료'
+            end  as docu_state     
+          FROM document, member     
+          <include refid= "searchFlag" />
+           and docu_req = MEM_ID
+                        
+          order by DOCU_REQDATE  DESC
+        ) A
+)B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<resultMap type="kr.or.ddit.vo.DocumentVO"  id="signMemberMap" autoMapping="true">
+	<id property="docuNo" column="DOCU_NO"/>
+	<collection property="signMemberList" ofType="kr.or.ddit.vo.MemberVO" autoMapping="true">
+	<id property="memId" column="MEM_ID"/>
+	<id property="memName" column="MEM_NAME"/>
+	</collection>
+</resultMap>
+<select id="selectOneDocu" parameterType="string"  resultMap="signMemberMap">
+ SELECT 
+(select  mem_name
+from document, member 
+where DOCU_REQ = MEM_ID
+and docu_no = #{docuNo}) AS DOCU_REQ,
+
+NVL((select  mem_name
+from document, member 
+where DOCU_AP1 = MEM_ID
+and docu_no = #{docuNo}), '없음') AS DOCU_AP1, 
+
+NVL((select  mem_name
+from document, member 
+where DOCU_AP2 = MEM_ID
+and docu_no = #{docuNo}),'없음') AS DOCU_AP2,
+
+(select  mem_name
+from document, member 
+where DOCU_APF = MEM_ID
+and docu_no = #{docuNo}) AS DOCU_APF
+,DOCU_REQDATE,DOCU_STATE
+,DOCU_FDATE,DOCU_CANCLE
+,DOCU_CODE,DOCU_FILENAME
+,DOCU_CONT,DOCU_REQCNT
+,DOCU_REQNOW,DOCU_NO 
+
+from document
+where docu_no = #{docuNo}
+</select>
+
+<!-- 결재자 리스트 출력  -->
+<select id="selectPeopleList" resultType="kr.or.ddit.vo.MemberVO">
+select 
+	mem_id 
+	,user_code 
+	,mem_name  
+	,rank_code 
+	,dept_code 
+from member 
+where mem_delete ='N'
+</select>
+
+
+<!-- 결재문서 생성  -->
+<insert id="insertDocu" parameterType="kr.or.ddit.vo.DocumentVO">
+INSERT INTO DOCUMENT(
+    docu_no,
+    docu_req,
+    docu_reqdate,
+    docu_apf,
+    docu_code,
+    docu_filename,
+    docu_cont,
+    docu_reqcnt
+    <if test="docuAp1 neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(docuAp1)">
+    ,docu_ap1
+    </if>
+    <if test="docuAp2 neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(docuAp2)">
+    ,docu_ap2
+    </if>
+)
+VALUES(
+    DOC_SEQ.NEXTVAL,
+    #{docuReq,jdbcType=VARCHAR},
+    SYSDATE,
+	#{docuApf,jdbcType=VARCHAR},
+	#{docuCode,jdbcType=VARCHAR},
+	#{docuFilename,jdbcType=VARCHAR},
+	#{docuCont,jdbcType=CLOB},
+	#{docuReqcnt,jdbcType=NUMERIC}
+	<if test="docuAp1 neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(docuAp1)">
+    ,#{docuAp1,jdbcType=VARCHAR}
+    </if>
+    <if test="docuAp2 neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(docuAp2)">
+    ,#{docuAp2,jdbcType=VARCHAR}
+    </if>
+)
+
+</insert>
+
+
+</mapper>
+

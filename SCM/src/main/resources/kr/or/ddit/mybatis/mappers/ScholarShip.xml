@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.stu_sup.scholarship.dao.ScholarShipDao">
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'code'">
+						AND INSTR(SCH_CODE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'state'">
+						AND INSTR(SCH_STATE, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(SCH_CODE, #{searchVO.searchWord}) > 0
+						OR INSTR(SCH_STATE, #{searchVO.searchWord}) > 0
+					</otherwise>
+				</choose>
+			</if>
+	</sql>
+	
+	<!-- 전체 조회 컬럼 수  -->
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM SCHOLAR
+<!-- 		<include refid="searchFrag" /> -->
+	</select>
+	
+	<!-- 리스트 출력 -->
+	<select id="selectScholarShipList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.ScholarVO">
+	SELECT B.*
+	FROM (
+    	SELECT A.*, ROWNUM RNUM
+		FROM (
+			SELECT
+				  SCH_NO
+				, SCH_MEM
+				, SCH_CODE
+				, SCH_AMOUNT
+				, SCH_STATE
+				, SCH_NOTE
+				, SCH_REASON
+				, SCH_REC
+			 FROM SCHOLAR
+			WHERE (SCH_CODE = 'SCC01'
+			   OR SCH_CODE = 'SCC02'
+			   OR SCH_CODE = 'SCC03'
+			   OR SCH_CODE = 'SCC04')
+			  AND SCH_DELETE = 'N'
+			<include refid="searchFrag" />
+			ORDER BY SCH_NO DESC
+			) A  
+		) B 
+	WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<!-- 상세조회 -->
+	<select id="selectScholarShip" parameterType="String" resultType="kr.or.ddit.vo.ScholarVO">
+	SELECT
+		  SCH_NO
+		, SCH_MEM
+		, SCH_CODE
+		, SCH_AMOUNT
+		, SCH_STATE
+		, SCH_NOTE
+		, SCH_REASON
+		, SCH_REC
+	FROM
+	    SCHOLAR
+	WHERE SCH_CODE = #{schCode }
+	</select>
+	
+	<!-- 수정 -->
+	<update id="updateScholarShip" parameterType="kr.or.ddit.vo.ScholarVO">
+		UPDATE SCHOLAR
+		SET
+			  SCH_CODE = #{schCode,jdbcType=VARCHAR}
+			, SCH_AMOUNT = #{schAmount, jdbcType=NUMERIC}
+			, SCH_STATE = #{schState, jdbcType=VARCHAR}
+			, SCH_NOTE = #{schNote, jdbcType=VARCHAR}
+			, SCH_REASON = #{schReason, jdbcType=VARCHAR}
+			, SCH_REC = #{schRec, jdbcType=VARCHAR}
+		WHERE SCH_NO = #{schNo,jdbcType=VARCHAR}
+	</update>
+	
+	<!-- 삭제 -->
+	<update id="deleteScholarShip" parameterType="kr.or.ddit.vo.ScholarVO">
+		UPDATE SCHOLAR
+		   SET SCH_DELETE = 'Y'
+		 WHERE SCH_CODE = #{schCode }
+	</update>
+	
+	<!-- 생성 -->
+	<insert id="insertScholarShip" parameterType="kr.or.ddit.vo.ScholarVO">
+		<selectKey keyProperty="schNo" resultType="String" order="BEFORE">
+			SELECT SCHOLAR_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		INSERT INTO SCHOLAR (
+			  SCH_NO
+			, SCH_MEM
+			, SCH_CODE
+			, SCH_AMOUNT
+			, SCH_NOTE
+			, SCH_REASON
+			, SCH_REC
+		) VALUES (
+			  #{schNo, jdbcType=VARCHAR}
+			, '202110009'
+			, #{schCode, jdbcType=VARCHAR}
+			, #{schAmount, jdbcType=NUMERIC}
+			, #{schNote, jdbcType=VARCHAR}
+			, #{schReason, jdbcType=VARCHAR}
+			, #{schRec, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	
+	
+</mapper>

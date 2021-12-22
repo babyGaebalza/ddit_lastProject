@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.board.dao.FacComplaintDAO">
+
+	<sql id="searchFrag">
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'name'">
+					AND	INSTR(MEM_NO, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'title'">
+					AND	INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(MEM_NO, #{searchVO.searchWord}) > 0
+						OR INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0)
+					</otherwise>
+				</choose>
+			</if>
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord) and searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+						AND
+						(INSTR(MEM_NO, #{searchVO.searchWord}) > 0
+						OR INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0)
+			</if>
+	</sql>
+
+	<select id="getMemName" parameterType="String" resultType="String">
+	SELECT
+	    MEM_NAME
+	FROM
+	    MEMBER
+	WHERE
+	    MEM_ID = #{memId }
+	</select>
+
+	<insert id="insertFC" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey keyProperty="boardNo" resultType="String" order="BEFORE">
+			SELECT BOARD_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+			INSERT INTO BOARD (
+			        BOARD_NO,
+				    MEM_NO,
+				    BOARD_CODE,
+				    BOARD_TITLE,
+				    BOARD_HITS,
+				    BOARD_FWRITER,
+				    BOARD_CONTENT,
+				    BOARD_DATE,
+				    BOARD_FDATE
+			) VALUES (
+			    #{boardNo,jdbcType=VARCHAR},
+			   	#{memNo,jdbcType=VARCHAR},
+			    'BC_201',
+			    #{boardTitle,jdbcType=VARCHAR},
+				0,
+				'202110017',
+				#{boardContent,jdbcType=CLOB},
+				SYSDATE,
+				SYSDATE
+			)
+	</insert>
+
+
+	<select id="selectTotalRecord" resultType="int">
+		SELECT COUNT(*)
+		FROM BOARD
+		WHERE
+			BOARD_CODE = 'BC_201'
+		<include refid="searchFrag" />
+	</select>
+	
+	<select id="selectFCList" resultType="kr.or.ddit.vo.BoardVO" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT B.*
+		FROM (
+			SELECT A.*, ROWNUM RNUM
+			FROM (
+				SELECT     
+				BOARD_NO
+				,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = MEM_NO) AS MEM_NO
+				,CLASS_NO
+				,BOARD_CODE,BOARD_TITLE ,BOARD_DEADLINE
+				,BOARD_HITS ,BOARD_DATE ,BOARD_DELETE
+				,BOARD_FWRITER,BOARD_FDATE,BOARD_CONTENT
+				, ROWID RID
+			FROM 
+				BOARD
+			WHERE
+				BOARD_CODE = 'BC_201'
+				ORDER BY BOARD_DATE DESC
+			) A  
+		) B
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]>                              
+ 			<include refid="searchFrag" /> 
+	</select>
+	
+	<update id="incrementCount" parameterType="map">
+		UPDATE 
+			BOARD
+		SET
+			${incType} = ${incType} + 1
+		WHERE 
+			BOARD_NO = #{boardNo}
+	</update>
+
+	<resultMap type="kr.or.ddit.vo.BoardVO" id="boardMap" autoMapping="true">
+		<id property="boardNo" column="NO"/>
+		<collection property="attatchList" ofType="kr.or.ddit.vo.AttatchVO" autoMapping="true" />
+	</resultMap>
+
+	<select id="selectFCView" parameterType="kr.or.ddit.vo.BoardVO" resultMap="boardMap">
+		SELECT
+		    F.BOARD_NO AS NO  		        
+		   ,F.MEM_NO
+		   ,F.CLASS_NO
+		   ,F.BOARD_CODE
+		   ,F.BOARD_TITLE
+		   ,F.BOARD_DEADLINE
+		   ,F.BOARD_HITS
+		   ,TO_CHAR(F.BOARD_DATE, 'yyyy-MM-DD') BOARD_DATE
+		   ,F.BOARD_DELETE
+		   ,F.BOARD_FWRITER
+		   ,F.BOARD_FDATE
+		   ,F.BOARD_CONTENT
+		    
+		    , A.ATT_NO, A.ATT_OGFILENAME
+		    , A.ATT_SAVEFILENAME, A.ATT_FANCYSIZE
+		FROM BOARD F LEFT OUTER JOIN 	ATTATCH A
+			ON(F.BOARD_NO = A.BOARD_NO)
+		WHERE F.BOARD_NO = #{fcNo}
+	</select>
+
+	<delete id="deleteFC" parameterType="String">
+		DELETE FROM BOARD
+		WHERE BOARD_NO = #{boardNo}
+	</delete>
+
+	<update id="UpdateFC"  parameterType="kr.or.ddit.vo.BoardVO">
+		UPDATE BOARD
+		SET
+				    BOARD_TITLE = #{boardTitle}
+				    ,BOARD_CONTENT = #{boardContent}
+				    ,BOARD_FDATE = TO_CHAR(#{boardFdate})
+		WHERE
+				BOARD_NO = #{boardNo}
+			
+	</update>
+
+
+</mapper>

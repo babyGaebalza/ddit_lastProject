@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_man.registermanage.dao.registerDao">
+
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				AND
+				<choose>
+					<when test="searchVO.searchType eq 'NAME'">
+						INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'MAJOR'">
+						INSTR(MEM_MAJOR, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						(INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+						OR INSTR(MEM_MAJOR, #{searchVO.searchWord}) > 0)
+
+					</otherwise>
+				</choose>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isBlank(searchVO.searchType) and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+					AND	(INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+						OR INSTR(MEM_MAJOR, #{searchVO.searchWord}) > 0)
+			</if>
+			
+
+	</sql>
+
+
+
+
+
+
+
+<select id="selectRegCount" resultType="int">
+	SELECT 
+		COUNT(*)
+	FROM 
+		MEMBER
+	WHERE
+		USER_CODE = 'US04'
+	AND
+		MEM_DELETE = 'N'
+	<include refid="searchFrag" />
+</select>
+
+
+
+	<resultMap type="kr.or.ddit.vo.MemberVO" id="memberMap" autoMapping="true">
+		<id property="memId" column="MEM_ID"/>
+		<collection property="register" javaType="java.util.List" ofType="kr.or.ddit.administration.vo.RegisterVO" autoMapping="true">
+			<id property="regNo" column="REG_NO"/>
+		</collection>
+	</resultMap>
+
+
+
+<select id="selectRegisterList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="memberMap">
+SELECT E.*
+FROM (
+        SELECT D.*, ROWNUM RNUM
+        FROM (
+                SELECT A.MEM_ID,A.USER_CODE,A.MEM_NAME,A.MEM_ENAME 
+                        ,A.MEM_BIRTH,A.MEM_REG1 ,A.MEM_GENDER,A.MEM_TEL,A.MEM_ADD1,A.MEM_ADD2 ,A.MEM_MAIL,A.MEM_NATION,A.MEM_DELETE 
+                        ,A.MEM_STUNO,A.MEM_ENTDATE,A.MEM_GRADATE 
+                        ,NVL((SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR), '-') AS MEM_MAJOR 
+                        ,A.MEM_TRACK ,A.MAJOR_DOUBLE,A.MEM_TRACK2,A.MAJOR_MINOR ,A.MEM_TRACK3,A.MEM_GRADUATE,A.ADMISSION_CODE 
+                        
+                        ,A.MEM_ADVISER,A.MEM_ADVISER2,A.MEM_SEMESTER
+                        
+                        ,X.REG_NO, X.REG_STUDENT
+                        ,NVL((SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = X.REG_CODE),'-') AS REG_CODE
+                        , X.REG_LEAVEDATE, X.REG_REASON, X.REG_WRITER, X.REG_WDATE
+                        ,X.REG_FWRITER
+                        , X.REG_FDATE
+                        , X.REG_STATE
+                FROM MEMBER A
+                    LEFT OUTER JOIN
+                    (
+                    SELECT Y.* FROM (
+                                SELECT REG_STUDENT, MAX(REG_FDATE) AS REG_FDATE FROM COLLEGE_REGISTER GROUP BY REG_STUDENT
+                                )Z
+                                LEFT OUTER JOIN
+                                COLLEGE_REGISTER Y
+                                ON Z.REG_FDATE = Y.REG_FDATE
+                        ) X
+                    ON A.MEM_ID = X.REG_STUDENT
+                  WHERE 
+			    	USER_CODE = 'US04'
+                ) D
+        )E
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]> 
+			 <include refid="searchFrag" />
+</select>
+
+
+	
+<select id="selectStuRegisterList" parameterType="String" resultMap="memberMap" >
+			SELECT
+			    A.MEM_ID,A.USER_CODE,A.MEM_NAME,A.MEM_ENAME
+			   ,A.MEM_BIRTH,A.MEM_REG1
+			   ,A.MEM_GENDER,A.MEM_TEL,A.MEM_ADD1,A.MEM_ADD2
+			   ,A.MEM_MAIL,A.MEM_NATION,A.MEM_DELETE
+			   ,A.MEM_STUNO,A.MEM_ENTDATE,A.MEM_GRADATE
+			   ,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR)AS MEM_MAJOR 
+			   ,A.MEM_TRACK
+			   ,A.MAJOR_DOUBLE,A.MEM_TRACK2,A.MAJOR_MINOR
+			   ,A.MEM_TRACK3,A.MEM_GRADUATE,A.ADMISSION_CODE
+			   ,A.MEM_ADVISER,A.MEM_ADVISER2,A.MEM_SEMESTER
+			   ,A.MEM_ABSLIMIT
+			   ,A.MEM_MILIMIT
+			   
+			    ,B.REG_STUDENT
+                ,NVL((SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = B.REG_CODE),'-') AS REG_CODE
+				,B.REG_CNGDATE, B.REG_LEAVEDATE
+			   ,B.REG_WRITER,B.REG_FWRITER
+			   ,B.REG_FDATE,B.REG_STATE, B.REG_REASON
+			FROM
+			    MEMBER A,
+			    COLLEGE_REGISTER B
+			WHERE 
+			    USER_CODE = 'US04'
+			AND
+				MEM_ID = #{memId}
+			AND 
+			    A.MEM_ID = B.REG_STUDENT(+)
+				ORDER BY REG_CNGDATE DESC
+</select>
+
+<insert id="insertRegister" parameterType="kr.or.ddit.administration.vo.RegisterVO">
+		<selectKey keyProperty="regNo" resultType="String" order="BEFORE">
+			SELECT NVL(MAX(TO_NUMBER(REG_NO)),1)+1 FROM COLLEGE_REGISTER
+		</selectKey>
+	INSERT INTO COLLEGE_REGISTER (
+	    REG_NO
+	   ,REG_STUDENT
+	   ,REG_CODE
+	   ,REG_CNGDATE
+	   ,REG_REASON
+	   ,REG_WRITER
+	   ,REG_WDATE
+	   ,REG_FWRITER
+	   ,REG_FDATE
+	   <if test="regLeavedate neq '' or regLeavedate neq null ">
+	   	,REG_LEAVEDATE
+	   </if>
+	) 
+	VALUES (
+		#{regNo, jdbcType=VARCHAR}
+		,#{regStudent,jdbcType=VARCHAR}
+		,#{regCode,jdbcType=VARCHAR}
+		,SYSDATE
+		,#{regReason,jdbcType=VARCHAR}
+		,#{regWriter,jdbcType=VARCHAR}
+		,SYSDATE
+		,#{regFwriter,jdbcType=VARCHAR}
+		,SYSDATE
+		<if test="regLeavedate neq '' or regLeavedate neq null ">
+	   	,#{regLeavedate, jdbcType=DATE}
+	   	</if>
+	)
+</insert>
+
+	<select id="selectRegCode" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT
+			CATE_CODE
+			,CATE_GROUP
+			,CATE_NAME1
+			,CATE_NAME2
+			,CATE_DATE1
+			,CATE_DATE2
+			,CATE_DELETE
+		FROM
+			CATEGORY
+		WHERE
+			CATE_GROUP = 'REG_CODE'
+	</select>
+	
+
+
+
+<update id="updateRegState" parameterType="kr.or.ddit.administration.vo.RegisterVO">
+	UPDATE 
+		COLLEGE_REGISTER
+	SET 
+		REG_STATE = 'N'
+	WHERE
+		REG_STUDENT = #{regStudent}
+</update>
+
+<update id="updateMemReg" parameterType="kr.or.ddit.vo.MemberVO">
+	UPDATE
+		MEMBER A
+	SET
+		A.MEM_ABSLIMIT = A.MEM_ABSLIMIT - #{memAbsLimit, jdbcType=NUMERIC}
+		,A.MEM_MILIMIT = A.MEM_MILIMIT - #{memMiLimit, jdbcType=NUMERIC}
+	WHERE
+		A.MEM_ID = #{memId, jdbcType=VARCHAR}
+</update>
+
+
+
+
+</mapper>

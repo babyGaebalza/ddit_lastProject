@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd" >
+<tiles-definitions>
+	<!-- definition name = logical view name -->
+  <definition name="super" template="/WEB-INF/views/template.jsp">
+  	<put-attribute name="preScript" value="/includee/preScript.jsp" />
+  	<put-attribute name="header" value="/includee/headerMenu.jsp" />
+  	<put-attribute name="left" value="/includee/leftMenu.jsp" />
+  	<put-attribute name="footer" value="/includee/footer.jsp" />
+  	<put-attribute name="postScript" value="/includee/postScript.jsp" />
+  </definition>
+  
+  <definition name="main" extends="super">
+  	<put-attribute name="content" value="/main.jsp" /> 	
+  </definition>
+  
+  <definition name="login/*" extends="super">
+  	<put-attribute name="content" value="/WEB-INF/views/login/{1}.jsp" /> 	
+  </definition>
+    
+<!--   <definition name="prod/*" extends="super" preparer="prodViewPreparer"> -->
+<!--   	<put-attribute name="content" value="/WEB-INF/views/prod/{1}.jsp" /> 	 -->
+<!--   </definition> -->
+  
+<!--   <definition name="member/*" extends="super"> -->
+<!--   	<put-attribute name="content" value="/WEB-INF/views/member/{1}.jsp" /> 	 -->
+<!--   </definition> -->
+
+<!-- 게시판 -->  
+   	<definition name="common/board/*" extends="super">
+  		<put-attribute name="content" value="/WEB-INF/views/common/board/{1}.jsp" /> 	
+ 	</definition>
+
+
+  <!-- 강의게시판 -->
+  <definition name="academic/*/lecturePage/*" extends="super" preparer="lectureViewPrepare">
+  	<put-attribute name="content" value="/WEB-INF/views/academic/{1}/lecturePage/{2}.jsp" /> 	  	
+  </definition>
+
+  <!-- 교수페이지 -->
+  <definition name="academic/professor/**" extends="super" preparer="professorViewPrepare">
+  	<put-attribute name="content" value="/WEB-INF/views/academic/professor/{1}.jsp" /> 	
+  </definition>
+  
+  <!-- 학생페이지 -->
+  <definition name="academic/studentMain/*/*" extends="super" preparer="studentMainViewPreparer">
+  	<put-attribute name="content" value="/WEB-INF/views/academic/student/{1}/{2}.jsp" /> 	
+  </definition>
+  
+	
+<!-- 행정직원 -->
+	<definition name="administration/main/adminMain" extends="super">
+		<put-attribute name="content" value="/WEB-INF/views/administration/main/adminMain.jsp" /> 	
+	</definition>
+<!--  결재관련 프리페어 태우기 ~!  -->
+  <definition name="common/document/*" extends="super" preparer="commonViewPrepare">
+  	<put-attribute name="content" value="/WEB-INF/views/common/document/{1}.jsp" /> 	
+  </definition>	
+<!-- 교무처 학사관리과 -->	
+	<!-- 교직원 강의 -->
+	<definition name="administration/univ_man/*/*" extends="super" preparer="adminUnivManPreparer">
+		<put-attribute name="content" value="/WEB-INF/views/administration/univ_man/{1}/{2}.jsp" /> 	
+	</definition>
+	
+<!-- 교무처 교무과 -->	
+	<definition name="administration/univ_aca/*/*" extends="super" preparer="adminUnivAcaPreparer">
+  		<put-attribute name="content" value="/WEB-INF/views/administration/univ_aca/{1}/{2}.jsp" /> 		
+  	</definition>
+	
+<!-- 사무국 시설과 -->	
+	<definition name="administration/off_fac/*/*" extends="super" preparer="adminOffFacViewPrepare">
+		<put-attribute name="content" value="/WEB-INF/views/administration/off_fac/{1}/{2}.jsp" /> 
+	</definition>
+	
+<!-- 사무국 재무과 -->
+	<definition name="administration/off_acc/*/*" extends="super" preparer="adminOffAccViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/administration/off_acc/{1}/{2}.jsp" /> 		
+  	</definition>
+  	
+<!-- 사무국 총무과 -->  	
+	<definition name="administration/off_gen/*/*" extends="super" preparer="adminOffGenViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/administration/off_gen/{1}/{2}.jsp" /> 	
+	</definition>
+	
+	<!-- 학생처 학생지원과 -->
+	<definition name="administration/stu_sup/*/*" extends="super" preparer="adminStuSupViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/administration/stu_sup/{1}/{2}.jsp" /> 	
+	</definition>
+	
+	<!-- 조교 -->
+	<definition name="academic/assistant/AssistantMain" extends="super" preparer="assistantViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/academic/assistant/AssistantMain.jsp" /> 	
+	</definition>
+	
+	<definition name="academic/assistant/studentManage/*" extends="super"  preparer="assistantViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/academic/assistant/studentManage/{1}.jsp" /> 	
+	</definition>
+	
+	<definition name="academic/assistant/advisorManage/*" extends="super"  preparer="assistantViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/academic/assistant/advisorManage/{1}.jsp" /> 	
+	</definition>
+	
+	<definition name="academic/assistant/budgetManage/*" extends="super" preparer="assistantViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/academic/assistant/budgetManage/{1}.jsp" /> 	
+	</definition>
+	
+	<definition name="academic/assistant/departmentManage/*" extends="super" preparer="assistantViewPrepare">
+  		<put-attribute name="content" value="/WEB-INF/views/academic/assistant/departmentManage/{1}.jsp" /> 	
+	</definition>
+	
+	<!-- 마이페이지 -->
+	<definition name="common/member/*" extends="super" preparer="studentMainViewPreparer">
+  		<put-attribute name="content" value="/WEB-INF/views/common/member/{1}.jsp" /> 	
+	</definition>
+
+</tiles-definitions>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.lecturePage.dao.ProvessorLectureNoticeDAO">
+
+<insert id="insertLectureNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey keyProperty="boardNo" resultType="String" order="BEFORE">
+			SELECT BOARD_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		  INSERT INTO BOARD (
+			        BOARD_NO,
+				    MEM_NO,
+				    BOARD_CODE,
+				    BOARD_TITLE,
+				    BOARD_HITS,
+				    
+				    BOARD_CONTENT, 
+				    BOARD_DATE, 
+				    
+				    CLASS_NO,
+				    BOARD_FWRITER
+		) VALUES (
+			    #{boardNo,jdbcType=VARCHAR}
+			    ,#{memNo,jdbcType=VARCHAR}
+			    ,'BC_300'
+			    ,#{boardTitle,jdbcType=VARCHAR}
+				,0
+				
+				,#{boardContent,jdbcType=CLOB}
+				,SYSDATE
+			
+				,#{classNo,jdbcType=VARCHAR} 
+				,#{memNo,jdbcType=VARCHAR}
+				
+		)
+</insert>
+
+<update id="updateNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		UPDATE BOARD
+	    SET
+	    BOARD_TITLE = #{boardTitle,jdbcType=VARCHAR},
+	    BOARD_DEADLINE = #{boardDeadline,jdbcType=DATE},
+	    BOARD_CONTENT = #{boardContent,jdbcType=CLOB}
+		WHERE BOARD_NO = #{boardNo,jdbcType=VARCHAR}
+
+</update>
+
+
+<update id="deleteNotice" parameterType="string">
+update board
+set BOARD_DELETE = 'Y'
+where BOARD_NO = #{boardNo}
+</update>
+</mapper>

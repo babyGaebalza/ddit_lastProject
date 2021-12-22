@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.stu_sup.support.dao.StuSupportDao">
+
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'name'">
+						AND INSTR(BUSS_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'job'">
+						AND INSTR(BUSS_JOB, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(BUSS_NAME, #{searchVO.searchWord}) > 0
+						OR INSTR(BUSS_JOB, #{searchVO.searchWord}) > 0)
+					</otherwise>
+				</choose>
+			</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM BUSINESS
+<!-- 		<include refid="searchFrag" /> -->
+	</select>
+	
+	<!-- 리스트 출력 -->
+	<select id="selectStuSupportList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.BusinessVO">
+	SELECT B.*
+	FROM (
+    	SELECT A.*, ROWNUM RNUM
+		FROM (
+			SELECT
+				  BUSS_NO
+				, BUSS_NAME
+				, BUSS_JOB
+				, TO_CHAR(BUSS_SDATE, 'YY-MM-DD') AS BUSS_SDATE
+				, TO_CHAR(BUSS_EDATE, 'YY-MM-DD') AS BUSS_EDATE
+			FROM BUSINESS
+			WHERE BUSS_DELETE = 'N'
+			<include refid="searchFrag" />
+			ORDER BY BUSS_NAME DESC
+			) A  
+		) B 
+	WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<!-- 선택시설 -->
+	<select id="selectStuSupport" parameterType="String" resultType="kr.or.ddit.vo.BusinessVO" >
+		SELECT
+				  BUSS_NO
+				, BUSS_NAME
+				, BUSS_JOB
+				, TO_CHAR(BUSS_SDATE, 'YY-MM-DD') AS BUSS_SDATE
+				, TO_CHAR(BUSS_EDATE, 'YY-MM-DD') AS BUSS_EDATE
+		FROM
+		    BUSINESS
+	  WHERE BUSS_NO = #{bussNo}
+	</select>
+	
+	<!-- 수정 -->
+	<update id="updateStuSupport" parameterType="kr.or.ddit.vo.BusinessVO">
+		UPDATE BUSINESS
+	       SET BUSS_NAME = #{bussName, jdbcType=VARCHAR}
+			 , BUSS_JOB = #{bussJob, jdbcType=VARCHAR}
+			 , BUSS_SDATE = #{bussSdate, jdbcType=DATE}
+			 , BUSS_EDATE = #{bussEdate, jdbcType=DATE}
+		 WHERE BUSS_NO = #{bussNo, jdbcType=VARCHAR}
+	</update>
+	
+	<!-- 삭제 -->
+	<update id="deleteStuSupport" parameterType="String">
+		UPDATE BUSINESS
+		   SET BUSS_DELETE = 'Y'
+		 WHERE BUSS_NO = #{bussNo}
+	</update>
+	
+	<!-- 입력 -->
+	<insert id="insertStuSupport" parameterType="kr.or.ddit.vo.BusinessVO">
+<!-- 		<selectKey keyProperty="bussNo" resultType="String" order="BEFORE"> -->
+<!-- 			SELECT NVL(MAX(TO_NUMBER(BUSS_NO)), 0) + 1 -->
+<!-- 			  FROM BUSINESS -->
+<!-- 		</selectKey> -->
+		INSERT INTO BUSINESS (
+				  BUSS_NO
+				, BUSS_NAME
+				, BUSS_JOB
+				, BUSS_SDATE
+				, BUSS_EDATE
+			) VALUES (
+				 (SELECT NVL(MAX(TO_NUMBER(BUSS_NO)), 0) + 1
+			        FROM BUSINESS)
+				, #{bussName, jdbcType=VARCHAR}
+				, #{bussJob, jdbcType=VARCHAR}
+				, #{bussSdate, jdbcType=DATE}
+				, #{bussEdate, jdbcType=DATE}
+		)
+	</insert>
+	
+</mapper>

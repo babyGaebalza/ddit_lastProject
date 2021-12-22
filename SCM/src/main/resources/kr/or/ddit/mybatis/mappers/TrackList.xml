@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_aca.trackListManage.dao.TrackListManageDAO">
+
+<insert id="insertClass" parameterType="kr.or.ddit.vo.TrackListVO">
+INSERT INTO TRACKLIST(
+	CLASS_NO,
+	TRACK_NO
+) VALUES(
+	#{classNo,jdbcType=VARCHAR},
+	#{trackNo,jdbcType=VARCHAR}
+)
+</insert>
+
+</mapper>

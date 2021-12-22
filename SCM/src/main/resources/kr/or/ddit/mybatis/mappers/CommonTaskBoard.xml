@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.common.lecturePage.dao.CommonLectureTaskDAO">
+
+<sql id="whereClause">
+where MEM_ID = MEM_NO  
+
+and BOARD_CODE = 'BC_302'
+and CLASS_NO= #{searchVO.searchWord} 
+and BOARD_DELETE = 'N'
+</sql>
+
+<select id="selectTaskList" resultType="kr.or.ddit.vo.BoardVO">
+SELECT B.*
+FROM 
+(SELECT ROWNUM RNUM , A.*
+FROM 
+(select   
+BOARD_TITLE, 
+TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE,
+MEM_NAME, 
+BOARD_HITS, 
+TO_CHAR(BOARD_DEADLINE, 'YYYY/MM/DD') BOARD_DEADLINE, 
+BOARD_NO
+from board , MEMBER 
+<include refid="whereClause" />
+order by BOARD_DEADLINE ASC) A
+)B
+WHERE RNUM BETWEEN  #{startRow} AND #{endRow}
+</select>
+
+<!-- 전체컬럼수 -->
+<select id="selectTotalRecord" resultType="int">
+select count(*)
+from  board , member
+<include refid="whereClause" />
+</select>
+
+    
+<resultMap type="kr.or.ddit.vo.BoardVO" id="departmentMap" autoMapping="true">
+	<id property="boardNo" column="NO"/>
+	<collection property="attatchList" ofType="kr.or.ddit.vo.AttatchVO" autoMapping="true" />
+</resultMap>
+	
+<select id="selectTask" parameterType="String" resultMap="departmentMap">
+SELECT
+	    F.BOARD_NO NO,
+	    CLASS_NO,
+	    BOARD_TITLE,
+	    BOARD_CONTENT,
+	    BOARD_HITS, 
+	    TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE,
+	    BOARD_FWRITER,
+	    TO_CHAR(BOARD_FDATE,'YYYY/MM/DD') BOARD_FDATE,
+	    M.MEM_NAME MEM_NO,
+	    TO_CHAR(BOARD_DEADLINE, 'YYYY/MM/DD') BOARD_DEADLINE
+	    
+	    ,ATT_NO
+	    ,ATT_OGFILENAME
+	    ,ATT_SAVEFILENAME
+	    ,ATT_FANCYSIZE
+	FROM
+	    BOARD F LEFT OUTER JOIN ATTATCH A
+	    ON(F.BOARD_NO = A.BOARD_NO), 
+	    MEMBER M
+	WHERE F.BOARD_NO = #{boardNo}
+	and F.MEM_NO = M.MEM_ID
+</select>
+
+<resultMap type="kr.or.ddit.academic.vo.TaskVO" id="submitTasksMap" autoMapping="true" >
+	<id property="taskNo" column="TASK_NUMBER"/>
+	<collection ofType="kr.or.ddit.vo.AttatchVO" property="attatchList" autoMapping="true" />
+</resultMap>
+<select id="selectSubmitTasks" resultMap="submitTasksMap">
+	SELECT
+	    T.TASK_NO TASK_NUMBER
+	  , TO_CHAR(T.TASK_DATE, 'YYYY/MM/DD') AS TASK_DATE
+	  , T.TASK_CONT
+	  , T.TASK_SCORE
+	  , M.MEM_NAME
+	  , ATT_NO
+	  , ATT_OGFILENAME
+	  , ATT_SAVEFILENAME
+	  , ATT_MIME
+	  , ATT_FILESIZE
+	  , ATT_FANCYSIZE
+	FROM
+	    TASK T
+	  , MEMBER M
+	  , ATTATCH ATCH
+	WHERE
+	    T.MEM_ID = M.MEM_ID
+	    AND   T.TASK_NO = ATCH.TASK_NO(+)
+	    AND   T.BOARD_NO = #{boardNo}
+	    <if test="memId neq null">   
+		    AND T.MEM_ID = #{memId}
+	    </if>
+	ORDER BY
+	    T.TASK_NO
+</select>
+
+<insert id="insertSubmitTask">
+	<selectKey keyProperty="taskNo" resultType="String" order="BEFORE">
+		SELECT NVL(MAX(TASK_NO), 0) + 1 
+		  FROM TASK
+	</selectKey>
+	INSERT INTO TASK (
+        TASK_NO
+      , BOARD_NO
+      , TASK_CONT
+      , MEM_ID
+      , CLASS_NO
+    ) VALUES (
+        #{taskNo, jdbcType=VARCHAR}
+      , #{boardNo, jdbcType=VARCHAR} 
+      , #{taskCont, jdbcType=VARCHAR}
+      , #{memId, jdbcType=VARCHAR}
+      , #{classNo, jdbcType=VARCHAR}
+    )
+</insert>
+
+<insert id="insertSubmitTaskAttatch">
+	INSERT ALL
+	<foreach collection="attatchList" item="atch" index="idx">
+		INTO ATTATCH (
+		    ATT_NO
+		  , TASK_NO
+		  , ATT_OGFILENAME
+		  , ATT_SAVEFILENAME
+		  , ATT_MIME
+		  , ATT_FILESIZE
+		  , ATT_FANCYSIZE
+		) VALUES (
+			  TO_CHAR(TO_NUMBER(ATT_NO) + #{idx })
+			, #{taskNo, jdbcType=VARCHAR}
+			, #{atch.attOgfilename, jdbcType=VARCHAR}
+			, #{atch.attSavefilename, jdbcType=VARCHAR}
+			, #{atch.attMime, jdbcType=VARCHAR}
+			, #{atch.attFilesize, jdbcType=NUMERIC}
+			, #{atch.attFancysize, jdbcType=VARCHAR}
+		)
+	</foreach>
+	SELECT NVL(MAX(TO_NUMBER(ATT_NO)), 0) + 1 AS ATT_NO FROM ATTATCH
+	
+</insert>
+
+<update id="incrementCount" parameterType="map">
+	UPDATE BOARD  
+		SET ${incType} = ${incType} + 1
+		WHERE BOARD_NO = #{boNo}
+</update>
+
+<update id="updateSubmitTask">
+	UPDATE TASK
+	    SET
+	        TASK_CONT = #{taskCont, jdbcType=VARCHAR}
+	WHERE
+	    TASK_NO = #{taskNo }
+</update>
+
+<delete id="deleteSubmitTaskAttatch">
+	DELETE FROM ATTATCH
+	WHERE
+	<trim prefixOverrides="OR">
+		<foreach collection="delAttNos" item="delAttNo" >
+			OR ATT_NO = #{delAttNo} 
+		</foreach>	
+	</trim>
+</delete>
+
+<update id="updateScore" parameterType="kr.or.ddit.academic.vo.TaskVO">
+update task 
+set TASK_SCORE = #{taskScore}
+where task_no = #{taskNo}
+</update>
+</mapper>

@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.student.lecture.dao.StudentLectureDAO">
+	
+	<select id="selectSemesterClassList" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    CLASS_NO
+		  , CLASS_CODE
+		  , CLASS_TIME
+		  , CLASS_POINT
+		  , MAJOR_CODE
+		  , CLASS_NAME
+		  , CLASS_ROOM
+		FROM CLASS
+		WHERE
+		    EXTRACT(YEAR FROM CLASS_DATE) = EXTRACT(YEAR FROM SYSDATE)
+		    AND   CLASS_SEMESTER LIKE '%'||#{semester}
+	</select>
+	
+	<sql id="searchOptionFrag">
+		<if test="searchOption neq null">
+			<trim prefix=" WHERE " prefixOverrides="AND">
+				AND A.MEM_NO = B.MEM_ID
+				AND EXTRACT(YEAR FROM CLASS_DATE) = EXTRACT(YEAR FROM SYSDATE)
+				AND CLASS_DELETE = 'N'
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchOption.classCode)">
+					AND CLASS_CODE = #{searchOption.classCode}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchOption.className)">
+					AND CLASS_Name LIKE '%'||#{searchOption.classCode}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchOption.collegeCode)">
+					AND COLLEGE_CODE = #{searchOption.collegeCode}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchOption.majorCode)">
+					AND MAJOR_CODE = #{searchOption.majorCode}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchOption.classSemester)">
+					AND CLASS_SEMESTER LIKE '%'||#{searchOption.classSemester}
+				</if>
+			</trim>	
+		</if>
+	</sql>
+
+	<select id="selectClassList" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    CLASS_NO
+		  , A.MEM_NO
+		  , FAC_NO
+		  , CLASS_CODE
+		  , COLLEGE_CODE
+		  , CLASS_ROOM
+		  , CLASS_NAME
+		  , CLASS_TIME
+		  , CLASS_POINT
+		  , CLASS_PERSON
+		  , CLASS_MAX
+		  , CLASS_ON
+		  , CLASS_DELETE
+		  , CLASS_EXTEND
+		  , MAJOR_CODE
+		  , CLASS_SEMESTER
+		  , CLASS_DIVIDE
+		  , CLASS_DATE
+		  , MEM_NAME AS "classProName"
+		FROM
+		    CLASS A, MEMBER B
+		<include refid="searchOptionFrag" />
+	</select>
+	
+	<select id="selectCartInCheck" resultType="int">
+		SELECT
+		    COUNT(*)
+		FROM
+		    CLASSCART
+		WHERE
+		    MEM_ID = #{memId}
+		    AND   CLASS_NO = #{classNo}
+	</select>
+	
+	<select id="selectCountCart" resultType="int">
+		SELECT
+		    COUNT(*)
+		FROM
+		    CLASSCART
+		WHERE
+		    MEM_ID = #{memId}
+	</select>
+	
+	<select id="selectCartList" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    CLASS_NO
+		  , MEM_NO
+		  , FAC_NO
+		  , CLASS_CODE
+		  , COLLEGE_CODE
+		  , CLASS_ROOM
+		  , CLASS_NAME
+		  , CLASS_TIME
+		  , CLASS_POINT
+		  , CLASS_PERSON
+		  , CLASS_MAX
+		  , CLASS_ON
+		  , CLASS_DELETE
+		  , CLASS_EXTEND
+		  , MAJOR_CODE
+		  , CLASS_SEMESTER
+		  , CLASS_DIVIDE
+		  , CLASS_DATE
+		FROM
+		    CLASS
+		WHERE
+		    CLASS_NO IN (
+		        SELECT
+		            CLASS_NO
+		        FROM
+		            CLASSCART
+		        WHERE
+		            MEM_ID = #{memId}
+		    )
+	</select>
+	
+	<insert id="insertCartRegister">
+		INSERT INTO CLASSCART (
+		    MEM_ID
+		  , CLASS_NO
+		) VALUES (
+		    #{memId, jdbcType=VARCHAR}
+		    , #{classNo, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<delete id="deleteCartRegister">
+		DELETE FROM CLASSCART
+		WHERE
+		    MEM_ID = #{memId}
+		    AND   CLASS_NO = #{classNo}	
+	</delete>
+	
+<!-- 	학생(로그인 기반)의 현재학기 수강신청 리스트 조회 -->
+	<select id="selectRegisterClassList" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    A.CLASS_NO
+		  , A.MEM_NO
+		  , A.FAC_NO
+		  , C.CLASS_CODE
+		  , A.COLLEGE_CODE
+		  , A.CLASS_ROOM
+		  , A.CLASS_NAME
+		  , A.CLASS_TIME
+		  , A.CLASS_POINT
+		  , A.CLASS_PERSON
+		  , A.CLASS_MAX
+		  , A.CLASS_ON
+		  , A.CLASS_DELETE
+		  , A.CLASS_EXTEND
+		  , A.MAJOR_CODE
+		  , A.CLASS_SEMESTER
+		  , A.CLASS_DIVIDE
+		  , A.CLASS_DATE
+		  , B.MEM_NAME AS "classProName"
+		FROM
+		    CLASS A, MEMBER B, CLASSLIST C
+		WHERE
+			A.MEM_NO = B.MEM_ID 
+			AND A.CLASS_NO = C.CLASS_NO
+		    AND C.MEM_NO = #{memNo}
+            AND EXTRACT(YEAR FROM C.CLASS_DATE) = EXTRACT(YEAR FROM SYSDATE)
+            AND C.CLASS_SEMESTER = #{semester}
+	</select>
+	
+<!-- 	학생(로그인 기반)의 현재학기 시간표 리스트 조회 -->
+	<select id="selectSemesterTimeTableList" resultType="kr.or.ddit.academic.vo.StuTimeTableVO">
+		SELECT
+		    STUTIME_YEAR
+		  , STUTIME_SEMESTER
+		  , STUTIME_DAY
+		  , MEM_ID
+		  , STUTIME1
+		  , STUTIME2
+		  , STUTIME3
+		  , STUTIME4
+		  , STUTIME5
+		  , STUTIME6
+		  , STUTIME7
+		  , STUTIME8
+		  , STUTIME9
+		FROM
+		    STU_TIMETABLE
+		WHERE
+		    MEM_ID = #{memNo}
+		    AND   STUTIME_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   STUTIME_SEMESTER = #{semester}
+	</select>
+	
+<!-- 	수강신청 여부 확인 -->
+	<select id="selectStudentRegisterCheck" resultType="int">
+		SELECT
+		    COUNT(*)
+		FROM
+		    CLASSLIST
+		WHERE
+		    CLASS_NO = #{class.classNo}
+		    AND   MEM_NO = #{student.memId}
+	</select>
+	
+<!-- 	학생이 현재 학기에 수강신청한 총 학점 -->
+	<select id="selectStudentAllPoint" resultType="int">
+		SELECT
+		    NVL(SUM(CLASS_POINT), 0)
+		FROM
+		    CLASS
+		WHERE CLASS_NO IN ( SELECT
+		    CLASS_NO
+		                  FROM
+		    CLASSLIST
+		                  WHERE
+		        EXTRACT(YEAR FROM CLASS_DATE) = EXTRACT(YEAR FROM SYSDATE)      
+		    AND CLASS_SEMESTER = #{semester}
+		    AND   MEM_NO = #{student.memId}
+		)
+	</select>
+	
+<!-- 	현재 학생시간표 기준으로 신청할 강의와 비교해 겹치지 않는 요일의 수를 검색 -->
+	<select id="selectNotDuplicateWeekday" resultType="int">
+		SELECT
+		    COUNT(*)
+		FROM
+		    STU_TIMETABLE
+		WHERE
+		    STUTIME_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   STUTIME_SEMESTER = #{semester}
+		    AND   MEM_ID = #{student.memId}
+		    AND   (
+		    <trim prefixOverrides="OR">
+	    	<foreach collection="lectureWeekdayTimeList" item="lwt">
+	    			OR
+	    			(
+	    				STUTIME_DAY = #{lwt.stutimeDay}
+	    				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime1)">
+							AND STUTIME1 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime2)">
+							AND STUTIME2 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime3)">
+							AND STUTIME3 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime4)">
+							AND STUTIME4 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime5)">
+							AND STUTIME5 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime6)">
+							AND STUTIME6 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime7)">
+							AND STUTIME7 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime8)">
+							AND STUTIME8 IS NULL
+						</if>
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lwt.stutime9)">
+							AND STUTIME9 IS NULL
+						</if>
+	    			)
+	    	</foreach>
+	    	</trim>
+		    )
+	</select>
+	
+<!-- 	재수강시 대체하는 강의번호(없을시 return 없음) -->
+	<select id="selectRetakeClassNo" resultType="String">
+		WITH STUCLASSLIST AS (
+		    SELECT
+		        A.CLASSLIST_NO
+		        , A.CLASS_DATE
+		    FROM
+		        CLASSLIST A
+		    WHERE
+		        MEM_NO = #{student.memId}
+		        AND   A.CLASS_NO IN (
+		            SELECT
+		                B.CLASS_NO
+		            FROM
+		                CLASS B
+		            WHERE
+		                B.CLASS_EXTEND = (
+		                    SELECT
+		                        C.CLASS_EXTEND
+		                    FROM
+		                        CLASS C
+		                    WHERE
+		                        C.CLASS_NO = #{class.classNo}
+		                )
+		        )
+		) 
+		SELECT
+		  R.CLASSLIST_NO
+		FROM
+		  STUCLASSLIST R
+		WHERE
+		  R.CLASS_DATE = (
+		      SELECT
+		          MAX(CLASS_DATE)
+		      FROM
+		          STUCLASSLIST
+		  )
+	</select>
+	
+<!-- 	재수강대상인 강의의 정보 검색 -->
+	<select id="selectRetakeClassInfo" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    CLASS_NAME
+		FROM
+		    CLASS
+		WHERE
+		    CLASS_NO = (
+		        SELECT
+		            CLASS_NO
+		        FROM
+		            CLASSLIST
+		        WHERE
+		            CLASSLIST_NO = #{retakeClassNo}
+		    )
+	</select>
+	
+<!-- 	수강신청 강의 수강현황리스트 입력 -->
+	<insert id="insertClassRegister">
+		INSERT INTO CLASSLIST (
+		    CLASSLIST_NO
+		  , CLASS_NO
+		  , MEM_NO
+		  , CLASS_SEMESTER
+		  <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(registerClass.classRetake)">
+			  , CLASS_RETAKE		  	
+		  </if>
+		  , CLASS_CODE
+		) VALUES (
+		    (SELECT NVL(MAX(TO_NUMBER(CLASSLIST_NO)), 0) + 1 FROM CLASSLIST)
+		  , #{registerClass.classNo, jdbcType=VARCHAR}
+		  , #{member.memId, jdbcType=VARCHAR}
+		  , #{semester, jdbcType=VARCHAR}
+		  <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(registerClass.classRetake)">
+			  , #{registerClass.classRetake}
+		  </if>
+		  , #{registerClass.classCode}
+		)
+	</insert>
+	
+<!-- 	수강신청 강의 시간표 변경 -->
+	<update id="updateStuTimeTableForNewRegister">
+		UPDATE STU_TIMETABLE
+		SET
+	    <trim  prefixOverrides=",">
+	    	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime1)">
+				, STUTIME1 = #{lectureWeekdayTime.stutime1, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime2)">
+				, STUTIME2 = #{lectureWeekdayTime.stutime2, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime3)">
+				, STUTIME3 = #{lectureWeekdayTime.stutime3, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime4)">
+				, STUTIME4 = #{lectureWeekdayTime.stutime4, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime5)">
+				, STUTIME5 = #{lectureWeekdayTime.stutime5, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime6)">
+				, STUTIME6 = #{lectureWeekdayTime.stutime6, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime7)">
+				, STUTIME7 = #{lectureWeekdayTime.stutime7, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime8)">
+				, STUTIME8 = #{lectureWeekdayTime.stutime8, jdbcType=VARCHAR}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime9)">
+				, STUTIME9 = #{lectureWeekdayTime.stutime9, jdbcType=VARCHAR}
+			</if>
+	    </trim>
+		WHERE
+		    MEM_ID = #{member.memId}
+		    AND   STUTIME_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   STUTIME_SEMESTER = #{semester}
+		    AND   STUTIME_DAY = #{lectureWeekdayTime.stutimeDay}
+	</update>
+	
+<!-- 	강의정보리스트 수강인원현황 + 1 변경 -->
+	<update id="updateClassPersonPlus">
+		UPDATE CLASS
+		    SET
+		        CLASS_PERSON = CLASS_PERSON + 1
+		WHERE CLASS_NO = #{classNo}
+	</update>
+	
+<!-- 	수강신청할 강의 현재 인원 조회 -->
+	<select id="selectClass" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT
+		    CLASS_PERSON
+		  , CLASS_MAX
+		FROM
+		    CLASS
+		WHERE
+		    CLASS_NO = #{classNo}
+	</select>
+	
+<!-- 	수강신청 취소(신청강의 삭제) -->
+	<delete id="deleteClassRegister">
+		DELETE FROM CLASSLIST
+		WHERE
+		    MEM_NO = #{member.memId}
+		    AND   CLASS_NO = #{registerClassInfo.classNo}
+	</delete>
+	
+<!-- 	수강신청 취소(학생시간표 변경) -->
+	<update id="updateStuTimeTableForDelRegister">
+		UPDATE STU_TIMETABLE
+		    SET
+		<trim  prefixOverrides=",">
+	    	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime1)">
+				, STUTIME1 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime2)">
+				, STUTIME2 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime3)">
+				, STUTIME3 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime4)">
+				, STUTIME4 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime5)">
+				, STUTIME5 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime6)">
+				, STUTIME6 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime7)">
+				, STUTIME7 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime8)">
+				, STUTIME8 = NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lectureWeekdayTime.stutime9)">
+				, STUTIME9 = NULL
+			</if>
+	    </trim>
+		WHERE
+		    MEM_ID = #{member.memId}
+		    AND   STUTIME_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   STUTIME_SEMESTER = #{semester}
+		    AND   STUTIME_DAY = #{lectureWeekdayTime.stutimeDay}
+	</update>
+	
+<!-- 	강의정보리스트 수강인원현황 + 1 변경 -->
+	<update id="updateClassPersonMinus">
+		UPDATE CLASS
+		    SET
+		        CLASS_PERSON = CLASS_PERSON - 1
+		WHERE CLASS_NO = #{classNo}
+	</update>	
+</mapper>

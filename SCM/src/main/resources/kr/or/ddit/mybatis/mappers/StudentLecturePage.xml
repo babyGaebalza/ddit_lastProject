@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.student.lecture.dao.StudentLecturePageDAO">
+
+<resultMap type="kr.or.ddit.vo.ClassListVO" id="classListMap" autoMapping="true">
+	<association property="classInfo" autoMapping="true" >
+	
+	</association>
+</resultMap>
+
+<select id="selectClassListByAuth" resultMap="classListMap">
+	SELECT
+	    A.CLASS_NO
+	  , B.CLASS_NAME
+	  , A.CLASS_CODE
+	  , B.CLASS_POINT
+	  , B.CLASS_TIME
+	FROM
+	    CLASSLIST A
+	  , CLASS B
+	WHERE
+	    A.MEM_NO = #{memNo}
+	    AND   A.CLASS_STATE = 'Y'
+	    AND   A.CLASS_NO = B.CLASS_NO
+	ORDER BY A.CLASS_CODE
+</select>
+
+<select id="selectLectureInfo" resultType="kr.or.ddit.vo.ClassVO">
+	SELECT *
+	FROM CLASS
+	WHERE CLASS_NO = #{classNo}
+</select>
+
+<select id="selectLectureTaskInfo" resultType="java.util.HashMap">
+	SELECT
+	    (
+	        SELECT
+	            COUNT(*)
+	        FROM
+	            BOARD
+	        WHERE
+	            CLASS_NO = #{classNo}
+	            AND   BOARD_CODE = 'BC_302'
+	    ) "taskSum"
+	  , (
+	        SELECT
+	            SUM( (
+	                SELECT
+	                    COUNT(*)
+	                FROM
+	                    TASK
+	                WHERE
+	                    TASK.BOARD_NO = BOARD.BOARD_NO
+	                    AND   TASK.MEM_ID = #{memId}
+	            ) )
+	        FROM
+	            BOARD
+	        WHERE
+	            CLASS_NO = #{classNo}
+	            AND   BOARD_CODE = 'BC_302'
+	    ) "submitSum"
+	FROM
+	    DUAL
+</select>
+
+<select id="selectLectureTimeTableList" resultType="kr.or.ddit.academic.vo.StuTimeTableVO">
+	SELECT
+	    stutime_year
+	  , stutime_semester
+	  , stutime_day
+	  , mem_id
+	  <foreach collection="times" item="time">
+	  , CASE
+	            WHEN stutime${time} LIKE '%'|| #{classNo} ||'%' THEN stutime${time}
+	            ELSE NULL
+	        END
+	    stutime${time}	  
+	  </foreach>
+	FROM
+	    stu_timetable
+	WHERE
+	    stutime_year = EXTRACT(YEAR FROM SYSDATE)
+	    AND   stutime_semester = (
+	        SELECT
+	            substr(sch_decode, 8)
+	        FROM
+	            schedule
+	        WHERE
+	            sch_decode LIKE '%SM%'
+	            AND   SYSDATE BETWEEN sch_sdate AND sch_edate
+	    )
+	    AND   mem_id = #{memId}	
+	ORDER BY
+    (
+        CASE
+            WHEN stutime_day = '월' THEN 1
+            WHEN stutime_day = '화' THEN 2
+            WHEN stutime_day = '수' THEN 3
+            WHEN stutime_day = '목' THEN 4
+            WHEN stutime_day = '금' THEN 5
+        END
+    )
+</select>
+
+<select id="selectOngoingTask" resultType="kr.or.ddit.vo.BoardVO">
+	SELECT
+	    BOARD_NO
+	  , BOARD_TITLE
+	  , TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE
+	  , TO_CHAR(BOARD_DEADLINE, 'YYYY/MM/DD') BOARD_DEADLINE
+	  , (
+	        SELECT
+	            COUNT(*)
+	        FROM
+	            TASK
+	        WHERE
+	            TASK.BOARD_NO = BOARD.BOARD_NO
+	            AND   TASK.MEM_ID = #{memId }
+	    ) SUBMIT_TASKYN
+	FROM
+	    BOARD
+	WHERE
+	    CLASS_NO = #{classNo }
+	    AND   BOARD_CODE = 'BC_302'
+	    AND   SYSDATE BETWEEN BOARD_DATE AND BOARD_DEADLINE
+	    AND   BOARD_DELETE = 'N'
+	ORDER BY
+	    BOARD_DEADLINE
+</select>
+
+<select id="selectLectureNotice" resultType="kr.or.ddit.vo.BoardVO">
+	WITH NOTICE AS (
+	    SELECT
+	        N.*
+	      , ROWNUM AS RNUM
+	    FROM
+	        (
+	            SELECT
+	                BOARD_NO
+	              , BOARD_TITLE
+	              , TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE
+	              , BOARD_HITS
+	            FROM
+	                BOARD
+	            WHERE
+	                CLASS_NO = #{classNo}
+	                AND   BOARD_CODE = 'BC_300'
+	                AND   BOARD_DELETE = 'N'
+	            ORDER BY
+	                BOARD_DATE DESC
+	        ) N
+	) SELECT
+	    *
+	  FROM
+	    NOTICE
+	  WHERE
+	  <![CDATA[
+	    RNUM <= 4
+	  ]]>
+</select>
+
+
+
+<select id="selectClassList" parameterType="kr.or.ddit.vo.AttendanceVO" resultType="kr.or.ddit.vo.ClassListVO">
+	SELECT
+	    CLASSLIST_NO
+	   ,CLASS_NO
+	   ,MEM_NO
+	   ,CLASS_DATE
+	   ,CLASS_SEMESTER
+	   ,CLASS_STATE
+	   ,CLASS_MID
+	   ,CLASS_FIN
+	   ,CLASS_SCORE
+	   ,CLASS_RETAKE
+	   ,CLASS_CONT
+	   ,CLASS_CODE
+	FROM
+	    CLASSLIST
+	WHERE	
+		MEM_NO = #{classStudent}
+	AND
+		CLASS_NO = #{classNo}
+</select>
+
+<insert id="inputStuAttend" parameterType="kr.or.ddit.vo.AttendanceVO">
+	INSERT INTO attendance (
+	    atdc_date
+	   ,classlist_no
+	   ,class_student
+	   ,atdc_point
+	   ,atdc_note
+	   ,class_no
+	) VALUES (
+		SYSDATE
+		,#{classlistNo }
+		,#{classStudent }
+		,2
+		,'비대면출석'
+		,#{classNo }
+	)
+</insert>
+
+<select id="selectMyAttend" parameterType="kr.or.ddit.vo.AttendanceVO" resultType="kr.or.ddit.vo.AttendanceVO">
+	SELECT
+	    ATDC_DATE
+	   ,CLASSLIST_NO
+	   ,CLASS_STUDENT
+	   ,ATDC_POINT
+	   ,ATDC_NOTE
+	   ,CLASS_NO
+	FROM
+	    ATTENDANCE
+	WHERE
+		CLASS_STUDENT = #{classStudent }
+	AND
+		CLASS_NO = #{classNo }
+</select>
+
+
+
+</mapper>

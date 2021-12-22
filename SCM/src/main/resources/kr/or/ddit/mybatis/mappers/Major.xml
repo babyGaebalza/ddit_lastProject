@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_aca.majormanage.dao.MajorManageDao">
+	
+	<sql id="searchFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'major'">
+					AND INSTR(MAJOR_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'colleage'">
+					AND INSTR(COLLEAGE_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'writer'">
+					AND INSTR(MAJOR_FWRITER, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND
+					(INSTR(MAJOR_NAME, #{searchVO.searchWord}) > 0
+					OR INSTR(COLLEGE_NAME, #{searchVO.searchWord}) > 0
+					OR INSTR(MAJOR_FWRITER, #{searchVO.searchWord}) > 0 )
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM MAJOR
+		 WHERE MAJOR_DELETE = 'N' 
+		  <include refid="searchFrag" />
+	</select>
+	
+	<!-- 모든 조회 -->
+	<select id="selectMajorList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.MajorVO">
+		SELECT B.*
+		FROM (
+	    	SELECT A.*, ROWNUM RNUM
+	        FROM (
+	            SELECT
+	                MAJOR_NAME
+	              , MAJOR_WRITER
+	              , MAJOR_PAY
+	              , MAJOR_COUNT
+	              , MAJOR_FWRITER
+	              , TO_CHAR(MAJOR_FDATE, 'YY-MM-DD') AS MAJOR_FDATE
+	              , MAJOR_POINT
+	            FROM MAJOR
+	            WHERE MAJOR_DELETE = 'N'
+	            <include refid="searchFrag" />
+	            ORDER BY MAJOR_FDATE DESC
+	            ) A  
+	        ) B 
+	    WHERE RNUM BETWEEN #{startRow} and #{endRow}
+	</select>
+	
+	<!-- 선택학과 -->
+	<select id="selectMajor" parameterType="String" resultType="kr.or.ddit.vo.MajorVO" >
+		SELECT
+		    MAJOR_CODE
+		   , MAJOR_NAME
+		   , COLLEGE_NAME
+		   , MAJOR_WRITER
+		   , TO_CHAR(MAJOR_DATE, 'YY-MM-DD') AS MAJOR_DATE
+		   , MAJOR_PAY
+		   , MAJOR_COUNT
+		   , MAJOR_FWRITER
+		   , TO_CHAR(MAJOR_FDATE, 'YY-MM-DD') AS MAJOR_FDATE
+		   , MAJOR_POINT
+		FROM
+		    MAJOR
+	   WHERE MAJOR_NAME = #{majorName}
+	</select>
+	
+	
+	<!-- 업데이트용 update -->
+	<update id="updateMajor" parameterType="kr.or.ddit.vo.MajorVO">
+		UPDATE MAJOR
+		   SET MAJOR_PAY = #{majorPay, jdbcType=NUMERIC}
+			 , MAJOR_COUNT = #{majorCount, jdbcType=NUMERIC}
+			 , MAJOR_FWRITER = #{majorFWriter, jdbcType=VARCHAR}
+			 , MAJOR_FDATE = SYSDATE
+			 , MAJOR_POINT = #{majorPoint, jdbcType=NUMERIC}
+		 WHERE MAJOR_NAME = #{majorName, jdbcType=VARCHAR}
+	</update>
+	
+	<!-- 삭제용 update -->
+	<update id="deleteMajor" parameterType="kr.or.ddit.vo.MajorVO">
+		UPDATE MAJOR
+		   SET MAJOR_DELETE = 'Y'
+		 WHERE MAJOR_NAME = #{majorName}
+	</update>
+	
+	<!-- 생성용 insert -->
+	<insert id="insertMajor" parameterType="kr.or.ddit.vo.MajorVO">
+		INSERT INTO MAJOR (
+			  COLLEGE_CODE
+			, MAJOR_NAME
+			, MAJOR_CODE
+			, MAJOR_WRITER
+			, MAJOR_DATE
+			, MAJOR_PAY
+			, MAJOR_COUNT
+			, MAJOR_FWRITER
+			, MAJOR_FDATE
+			, MAJOR_DELETE
+			, MAJOR_POINT
+			, COLLEGE_NAME
+			, MAJOR_NUMBER
+		) VALUES (
+			  #{collegeCode, jdbcType=VARCHAR}
+			, #{majorName, jdbcType=VARCHAR}
+			, (SELECT 'C'||SUBSTR(#{collegeCode, jdbcType=VARCHAR}, 3)||'M' ||LPAD(TO_NUMBER(SUBSTR(MAX(MAJOR_CODE), 5) + 1), 2, '0')
+    			 FROM MAJOR
+    			WHERE MAJOR_CODE LIKE 'C'||SUBSTR(#{collegeCode, jdbcType=VARCHAR}, 3)||'M'||'%')
+			, #{majorWriter, jdbcType=VARCHAR}
+			, SYSDATE
+			, #{majorPay, jdbcType=NUMERIC}
+			, #{majorCount, jdbcType=NUMERIC}
+			, #{majorWriter, jdbcType=VARCHAR}
+			, SYSDATE
+			, 'N'
+			, #{majorPoint, jdbcType=NUMERIC}
+			, (SELECT DISTINCT COLLEGE_NAME
+				 FROM MAJOR
+ 				WHERE COLLEGE_CODE = #{collegeCode, jdbcType=VARCHAR})
+ 			, (SELECT SUBSTR(#{collegeCode, jdbcType=VARCHAR}, 3)||LPAD(TO_NUMBER(SUBSTR(TO_CHAR(MAX(MAJOR_NUMBER)), 3) + 1), 2, '0')
+ 				 FROM MAJOR
+ 				WHERE COLLEGE_CODE LIKE 'CO'||SUBSTR(#{collegeCode, jdbcType=VARCHAR}, 3))
+		)
+	</insert>
+	
+	<select id="selectCollegeMajorList" resultType="kr.or.ddit.vo.MajorVO">
+		SELECT
+		    MAJOR_CODE
+		  , MAJOR_NAME
+		  , COLLEGE_CODE
+		FROM
+		    MAJOR
+		WHERE
+		    MAJOR_DELETE = 'N'
+		    AND   COLLEGE_CODE = #{collegeCode}
+	   ORDER BY MAJOR_NAME 
+	</select>
+	
+</mapper>

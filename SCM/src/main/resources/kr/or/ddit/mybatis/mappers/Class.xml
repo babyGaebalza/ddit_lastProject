@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_man.classmanage.dao.ClassManageDao">
+
+	<sql id="searchFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'className'">
+					AND INSTR(CLASS_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'classRoom'">
+					AND INSTR(CLASS_ROOM, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND
+					(INSTR(CLASS_NAME, #{searchVO.searchWord}) > 0
+					OR INSTR(CLASS_ROOM, #{searchVO.searchWord}) > 0 )
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM CLASS
+		 WHERE CLASS_DELETE = 'N'
+		  <include refid="searchFrag" />
+	</select>
+	
+	<!-- 모든 조회 -->
+	<select id="selectClassList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.ClassVO">
+		SELECT B.*
+		FROM (
+	    	SELECT A.*, ROWNUM RNUM
+	        FROM (
+	            SELECT
+					  CLASS_NO
+					, MEM_NO
+					, FAC_NO
+					, CLASS_CODE
+					, COLLEGE_CODE
+					, CLASS_ROOM
+					, CLASS_NAME
+					, CLASS_TIME
+					, CLASS_POINT
+					, CLASS_PERSON
+					, CLASS_MAX
+					, CLASS_ON
+					, CLASS_EXTEND
+					, MAJOR_CODE
+					, CLASS_SEMESTER
+					, CLASS_DIVIDE
+					, TO_CHAR(CLASS_DATE, 'YY-MM-DD') AS CLASS_DATE
+	            FROM CLASS
+	           WHERE CLASS_DELETE = 'N'
+	            <include refid="searchFrag" />
+	            ORDER BY CLASS_NAME DESC
+	            ) A  
+	        ) B 
+	    WHERE RNUM BETWEEN #{startRow} and #{endRow}
+	</select>
+	
+	
+	<!-- 선택시설 -->
+	<select id="selectClass" parameterType="String" resultType="kr.or.ddit.vo.ClassVO" >
+		SELECT
+			  CLASS_NO
+			, MEM_NO
+			, FAC_NO
+			, CLASS_CODE
+			, COLLEGE_CODE
+			, CLASS_ROOM
+			, CLASS_NAME
+			, CLASS_TIME
+			, CLASS_POINT
+			, CLASS_PERSON
+			, CLASS_MAX
+			, CLASS_ON
+			, CLASS_DELETE
+			, CLASS_EXTEND
+			, MAJOR_CODE
+			, CLASS_SEMESTER
+			, CLASS_DIVIDE
+			, TO_CHAR(CLASS_DATE, 'YY-MM-DD') AS CLASS_DATE
+		FROM
+			 CLASS
+	   WHERE CLASS_NO = #{classNo}
+	</select>
+	
+	<!-- 수정 -->
+	<update id="updateClass" parameterType="kr.or.ddit.vo.ClassVO">
+		UPDATE CLASS
+	       SET MEM_NO = #{memNo,jdbcType=VARCHAR}
+		     , CLASS_ROOM = #{classRoom, jdbcType=VARCHAR}
+			 , CLASS_NAME = #{className, jdbcType=VARCHAR}
+			 , CLASS_TIME = #{classTime, jdbcType=VARCHAR}
+			 , CLASS_POINT = #{classPoint, jdbcType=NUMERIC}
+			 , CLASS_PERSON = #{classPerson, jdbcType=NUMERIC}
+			 , CLASS_MAX = #{classMax, jdbcType=NUMERIC}
+			 , CLASS_ON = #{classOn, jdbcType=CHAR}
+			 , CLASS_DIVIDE = #{classDivide, jdbcType=VARCHAR}
+		 WHERE CLASS_NO = #{classNo}
+	</update>
+	
+	<!-- 삭제 -->
+	<update id="deleteClass" parameterType="String">
+		UPDATE CLASS
+		   SET CLASS_DELETE = 'Y'
+		 WHERE CLASS_NO = #{classNo}
+	</update>
+	
+	<!-- 입력 -->
+	<insert id="insertClass" parameterType="kr.or.ddit.vo.ClassVO">
+		INSERT INTO CLASS (
+			  CLASS_NO
+			, MEM_NO
+			, FAC_NO
+			, CLASS_CODE
+			, COLLEGE_CODE
+			, CLASS_ROOM
+			, CLASS_NAME
+			, CLASS_TIME
+			, CLASS_POINT
+			, CLASS_PERSON
+			, CLASS_MAX
+			, CLASS_ON
+			, CLASS_DELETE
+			, CLASS_EXTEND
+			, MAJOR_CODE
+			, CLASS_SEMESTER
+			, CLASS_DIVIDE
+			, CLASS_DATE
+		) VALUES (
+			  #{classNo, jdbcType=VARCHAR}
+			, #{memNo, jdbcType=VARCHAR}
+			, #{facNo, jdbcType=VARCHAR}
+			, #{classCode, jdbcType=VARCHAR}
+			, #{collegeCode, jdbcType=VARCHAR}
+			, #{classRoom, jdbcType=VARCHAR}
+			, #{className, jdbcType=VARCHAR}
+			, #{classTime, jdbcType=VARCHAR}
+			, #{classPoint, jdbcType=NUMERIC}
+			, #{classPerson, jdbcType=NUMERIC}
+			, #{classMax, jdbcType=NUMERIC}
+			, #{classOn, jdbcType=CHAR}
+			, 'N'
+			, #{classExtend, jdbcType=VARCHAR}
+			, #{majorCode, jdbcType=VARCHAR}
+			, #{classSemester, jdbcType=VARCHAR}
+			, #{classDivide, jdbcType=VARCHAR}
+			, SYSDATE
+		)
+	</insert>
+	
+	
+</mapper>

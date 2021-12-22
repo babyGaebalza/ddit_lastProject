@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_man.graduatemanage.dao.GraduateDao">
+	<sql id="searchFrag">
+		<if test='searchVO.searchType eq "2"'>
+			AND MEM_GRADUATE = 'N'
+		</if>
+		<if test='searchVO.searchType eq "3"'>
+			AND MEM_GRADUATE = 'Y'
+		</if>
+		
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+			<choose>
+				<when test="searchVO.searchType eq 'id'">
+				AND	INSTR(MEM_ID, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'name'">
+				AND	INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+				AND
+					(INSTR(MEM_ID, #{searchVO.searchWord}) > 0
+					OR INSTR(MEM_NAME, #{searchVO.searchWord}) > 0 )
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<sql id="radioFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+			<choose>
+				<when test="searchVO.formType eq '2'">
+				AND	MEM_GRADUATE = 'N'
+				</when>
+				<when test="searchVO.formType eq '3'">
+				AND	MEM_GRADUATE = 'Y'
+				</when>
+				<otherwise>
+				AND MEM_GRADUATE = 'N'
+				AND MEM_GRADUATE = 'Y'
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM MEMBER
+<!-- 		  <include refid="searchFrag" /> -->
+	</select>
+	
+	<select id="selectGraduateList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT B.*
+		FROM (
+			SELECT A.*, ROWNUM RNUM
+				FROM (
+					SELECT
+					  MEM_ID
+					, MEM_NAME
+					, MEM_ENAME
+					, TO_CHAR(MEM_BIRTH, 'YY-MM-DD') AS MEM_BIRTH
+					, MEM_GENDER
+					, MEM_TEL
+					, MEM_MAJOR
+					, MEM_ADVISER
+					, MEM_GRADATE
+					, MEM_GRADUATE
+				FROM MEMBER
+			   WHERE MEM_DELETE = 'N'
+			     AND USER_CODE = 'US04'
+				<include refid="searchFrag" />
+				<include refid="radioFrag" />
+				ORDER BY MEM_NAME DESC
+					) A
+				) B
+		WHERE RNUM BETWEEN #{startRow} and #{endRow}
+	</select>
+	
+	<!-- 선택 -->
+	<select id="selectGraduate" parameterType="String" resultType="kr.or.ddit.vo.MemberVO" >
+		SELECT
+			  MEM_ID
+	        , MEM_NAME
+			, MEM_ENAME
+			, TO_DATE(MEM_BIRTH, 'YY-MM-DD')
+			, MEM_GENDER
+			, MEM_TEL
+			, MEM_ADD1
+			, MEM_ADD2
+			, MEM_ENTDATE
+			, MEM_MAJOR
+			, MEM_ADVISER
+			, MEM_GRADATE
+			, MEM_GRADUATE
+		FROM
+			MEMBER
+	   WHERE MEM_ID = #{memId}
+	</select>
+	
+	<update id="updateGraduate" parameterType="kr.or.ddit.vo.FacilityVO">
+		UPDATE MEMBER
+		   SET MEM_GRADATE = #{memGradate, jdbcType=DATE}
+			 , MEM_GRADUATE = #{memGraduate, jdbcType=VARCHAR}
+		 WHERE MEM_ID = #{memId}
+	</update>
+	
+	<update id="deleteGraduate" parameterType="kr.or.ddit.vo.FacilityVO">
+		UPDATE MEMBER
+		   SET MEM_GRADUATE = 'Y'
+		 WHERE FAC_NO = #{facNo}
+	</update>
+	
+</mapper>

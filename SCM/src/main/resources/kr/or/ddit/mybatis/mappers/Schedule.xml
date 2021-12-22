@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.schedule.dao.ScheduleDAO">
+	<select id="selectLectureRegisterByNow" resultType="kr.or.ddit.vo.ScheduleVO">
+		SELECT
+		    SCH_CONT
+		  , SCH_SDATE
+		  , SCH_EDATE
+		  , SCH_YEAR
+		  , SCH_DECODE
+		FROM
+		    SCHEDULE
+		WHERE
+		    SCH_DELETE = 'N'
+		    AND   SCH_STATE = 'N'
+		    AND   SCH_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   SCH_DECODE LIKE '%LR%'
+		    AND   SYSDATE BETWEEN SCH_SDATE AND SCH_EDATE
+	</select>
+	
+	<select id="selectCurrentSemester" resultType="kr.or.ddit.vo.ScheduleVO">
+		SELECT
+		    SCH_YEAR
+		  , SCH_CONT
+		  , TO_CHAR(SCH_SDATE, 'YYYY/MM/DD') SCH_SDATE
+		  , TO_CHAR(SCH_EDATE, 'YYYY/MM/DD') SCH_EDATE
+		  , ROUND((SYSDATE - SCH_SDATE) / (SCH_EDATE - SCH_SDATE) * 100) "semesterPercentage"
+		FROM
+		    SCHEDULE
+		WHERE
+		    SCH_YEAR = EXTRACT(YEAR FROM SYSDATE)
+		    AND   SCH_DECODE LIKE '%SM%'
+		    AND   SYSDATE BETWEEN SCH_SDATE AND SCH_EDATE
+	</select>
+	
+	<update id="updateCartChangeOne">
+		UPDATE SCHEDULE
+		SET SCH_EDATE = SYSDATE + 1
+		WHERE SCH_DECODE = 'SCED-LR21'
+	</update>
+	<update id="updateCartChangeTwo">
+		UPDATE SCHEDULE
+		SET SCH_SDATE = SYSDATE + 2
+		WHERE SCH_DECODE = 'SCED-LR22'
+	</update>
+	
+	<update id="updateRegiChangeOne">
+		UPDATE SCHEDULE
+		SET SCH_EDATE = SYSDATE - 2
+		WHERE SCH_DECODE = 'SCED-LR21'
+	</update>
+	<update id="updateRegiChangeTwo">
+		UPDATE SCHEDULE
+		SET SCH_SDATE = SYSDATE - 1
+		WHERE SCH_DECODE = 'SCED-LR22'
+	</update>
+</mapper>

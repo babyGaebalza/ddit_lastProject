@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.student.graduation.dao.GraduaitonManageDAO">
+
+
+<select id="selectGraduatePointList" resultType="java.util.Map">
+	SELECT 
+	    CLASSLIST.CLASS_CODE "classCode"
+	    , TO_CHAR(SUM(CLASS_POINT)) "pointByCode"
+	FROM CLASSLIST, CLASS
+	WHERE
+	    CLASSLIST.CLASS_NO = CLASS.CLASS_NO
+	    AND CLASSLIST.MEM_NO = #{memId}
+	    AND CLASSLIST.CLASS_SCORE >= 60
+	GROUP BY CLASSLIST.CLASS_CODE
+	ORDER BY CLASSLIST.CLASS_CODE
+</select>
+
+<select id="selectGraduateRegister" resultType="int">
+	SELECT COUNT(*)
+	FROM DOCUMENT
+	WHERE
+	    DOCU_REQ = #{memId}
+	    AND DOCU_CODE = 'DOC11'
+</select>
+
+<insert id="insertGraduationRegiser">
+	INSERT INTO document (
+	    DOCU_NO
+	  , DOCU_REQ
+	  , DOCU_APF
+	  , DOCU_CODE
+	) VALUES (
+	    (SELECT NVL(MAX(TO_NUMBER(DOCU_NO)), 0) + 1 FROM DOCUMENT)
+	    , #{memId, jdbcType=VARCHAR}
+	    , #{memAdviser, jdbcType=VARCHAR}
+	    , 'DOC11'
+	)
+</insert>
+
+<select id="selectMajorTrackList" resultType="kr.or.ddit.vo.TrackVO">
+	SELECT 
+		TRACK_NO
+		, TRACK_NAME
+		, MAJOR_NAME
+	FROM TRACK
+	WHERE MAJOR_CODE = #{memMajor}
+	AND TRACK_DELETE = 'N'
+</select>
+
+
+<resultMap type="kr.or.ddit.vo.DocumentVO" id="trackRegisterMap" autoMapping="true">
+	<association property="track" javaType="kr.or.ddit.vo.TrackVO" autoMapping="true" />
+</resultMap>
+<select id="selectTrackRegister" resultMap="trackRegisterMap">
+	SELECT DOCUMENT.*
+	    , TRACK_NAME
+	    , TRACK_NO
+	FROM DOCUMENT, TRACK
+	WHERE 
+	    DOCU_CODE = 'DOC10'
+	    AND DOCU_REQ = #{memId}
+	    AND TO_CHAR(DOCU_CONT) = TRACK_NO
+	
+</select>
+
+
+<resultMap type="kr.or.ddit.vo.TrackVO" autoMapping="true" id="trackDetailMap">
+	<id column="TRACK_NO" property="trackNo"/>
+	
+	<collection property="trackList" javaType="java.util.List" ofType="kr.or.ddit.vo.ClassVO" autoMapping="true"></collection>
+</resultMap>
+<select id="selectTrackInfoAndSatisfied" resultMap="trackDetailMap">
+	SELECT TRACKINFO.*
+	    ,(
+	    SELECT CLASS_NAME
+	    FROM CLASSLIST SEARCH1
+	    WHERE 
+	            MEM_NO = #{authMember.memId}
+	        AND SEARCH1.CLASS_NO = TRACKINFO.CLASS_NO
+	        <![CDATA[
+	        AND  SEARCH1.CLASS_SCORE >= 60
+	        ]]>
+	        OR SEARCH1.CLASS_NO IN (
+	            SELECT CLASS_NO
+	            FROM CLASS SEARCH2
+	            WHERE SEARCH2.CLASS_EXTEND = TRACKINFO.CLASS_NO
+	        )
+	    ) TRACK_SATISFIED
+	FROM
+	    (SELECT 
+	        T.*
+	        , C.CLASS_NO
+	        , C.CLASS_NAME
+	    FROM TRACK T, TRACKLIST TL, CLASS C
+	    WHERE
+	        T.TRACK_NO = TL.TRACK_NO
+	        AND TL.CLASS_NO = C.CLASS_NO
+	        AND T.TRACK_NO = #{trackNo,jdbcType=VARCHAR}
+	        ORDER BY C.CLASS_SEMESTER, CLASS_NAME) TRACKINFO
+</select>
+
+<insert id="insertTrackRegister">
+	INSERT INTO document (
+	    DOCU_NO
+	  , DOCU_REQ
+	  , DOCU_APF
+	  , DOCU_CODE
+	  , DOCU_CONT
+	) VALUES (
+	    (SELECT NVL(MAX(TO_NUMBER(DOCU_NO)), 0) + 1 FROM DOCUMENT)
+	    , #{authMember.memId, jdbcType=VARCHAR}
+	    , #{authMember.memAdviser, jdbcType=VARCHAR}
+	    , 'DOC10'
+	    , #{trackNo, jdbcType=CLOB}
+	)
+</insert>
+
+<update id="updateTrackRegister">
+	UPDATE DOCUMENT
+	    SET
+	        DOCU_CONT = #{trackNo, jdbcType=CLOB}
+	WHERE
+	    DOCU_CODE = 'DOC10'
+	    AND DOCU_REQ = #{authMember.memId}
+</update>
+
+</mapper>

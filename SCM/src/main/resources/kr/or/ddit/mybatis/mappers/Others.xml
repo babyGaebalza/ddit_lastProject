@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.document.dao.OthersDAO">
+<!-- 검색조건 -->
+<!-- <sql id="searchFlag"> -->
+<!-- 	<if test="userCode neq null"> -->
+<!-- 	where USER_CODE = #{userCode} -->
+<!-- 	</if>	 -->
+	
+<!-- 	<if test="rankCode neq null"> -->
+<!-- 	<if test="rankCode neq null"> -->
+	
+<!--     AND  docu_req = #{searchVO.searchWord}    -->
+<!--     </if>	 -->
+<!-- </sql> -->
+
+<select id="selectDeptList" resultType="hashMap">
+select cate_code "code", cate_name1 "name"
+from category 
+where cate_group = 'DEPT_CODE'	
+</select>
+
+<select id="selectMajorList" resultType="hashMap">
+select MAJOR_CODE "code", MAJOR_NAME "name"
+from major 
+</select>
+
+
+<select id="selectNameAndId" resultType="hashMap">
+select MEM_NAME "name", MEM_ID "id"
+from member 
+where USER_CODE = #{userCode}
+and RANK_CODE = #{rankCode}
+<if test="deptCode neq null">
+and DEPT_CODE= #{deptCode}
+</if>
+<if test="memMajor neq null">
+and MEM_MAJOR= #{memMajor}
+</if>
+
+
+
+</select>
+</mapper>

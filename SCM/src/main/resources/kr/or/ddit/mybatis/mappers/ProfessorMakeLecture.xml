@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.lecture.dao.MakeLectureDAO">
+
+<select id="selectMajorList" resultType="hashMap">
+select MAJOR_CODE "id", MAJOR_NAME "name"
+from major 
+where COLLEGE_CODE = #{collegeCode}
+</select>
+
+
+<select id="selectFacList" resultType="hashMap">
+select FAC_NO "id", FAC_NAME "name"
+from FACILITIES
+where MAJOR_CODE = 'C05M17'
+</select>
+
+<select id="selectOldList" parameterType="hashMap" resultType="hashMap">
+select class_no "id", class_name "name" 
+from class
+where class_code = #{classCode}
+and major_code = #{majorCode}
+and class_extend is null
+</select>
+
+<select id="selectMajorChef" resultType="hashMap">
+select mem_id "id", mem_name "name" 
+from member
+where RANK_CODE = 'RANK04'
+and MEM_MAJOR = #{memMajor}
+</select>
+</mapper>

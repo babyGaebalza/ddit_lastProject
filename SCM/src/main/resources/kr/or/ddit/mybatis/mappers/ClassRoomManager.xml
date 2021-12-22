@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.off_fac.facilitymanage.dao.ClassRoomManagerDAO">
+
+	<insert id="createClassRoom" parameterType="kr.or.ddit.vo.FacilityVO" >
+		<selectKey keyProperty="facNo" order="BEFORE" resultType="String">
+			SELECT (TO_NUMBER(MAX(FAC_NO))+1) FAC_NO FROM FACILITIES
+		</selectKey>
+			INSERT INTO FACILITIES (
+		    FAC_NO
+		   ,FAC_CODE
+		   ,FAC_NUMBER
+		   ,FAC_NAME
+		   ,FAC_PAY
+		   ,FAC_RESULT
+		   ,COLLEGE_CODE
+		) VALUES (
+			#{facNo, jdbcType=VARCHAR}
+			,'FC99'
+			,#{facNumber, jdbcType=NUMERIC}
+			,#{facName, jdbcType=VARCHAR}
+			,TO_NUMBER('0')
+			,TO_CHAR('Y')
+			,#{collegeCode, jdbcType=VARCHAR}
+		)
+	</insert>
+
+</mapper>

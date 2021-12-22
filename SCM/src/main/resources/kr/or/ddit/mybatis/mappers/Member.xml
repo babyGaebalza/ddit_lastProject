@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.member.dao.MemberDao">
+
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				<choose>
+					<when test="searchVO.searchType eq 'ADMIN'">
+					AND	INSTR(USER_CODE, 'US01') > 0
+					</when>
+					<when test="searchVO.searchType eq 'PROP'">
+					AND	INSTR(USER_CODE, 'US02') > 0
+					</when>
+					<when test="searchVO.searchType eq 'ASSIS'">
+					AND	INSTR(USER_CODE, 'US03') > 0
+					</when>
+					<when test="searchVO.searchType eq 'STUD'">
+					AND	INSTR(USER_CODE, 'US04') > 0
+					</when>
+					<otherwise>
+					AND
+						(INSTR(USER_CODE, 'US01') > 0
+						OR INSTR(USER_CODE, 'US02') > 0
+						OR INSTR(USER_CODE, 'US03') > 0
+						OR INSTR(USER_CODE, 'US04') > 0)
+					</otherwise>
+				</choose>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType) and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				AND
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isBlank(searchVO.searchType) and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				AND
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+					INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+			</if>
+
+	</sql>
+	
+	<sql id="selectMemberFrag">
+		 <trim prefix=" WHERE " prefixOverrides="AND">
+		 	USER_CODE = CATE_CODE 
+		 	<if test="member neq null">
+		 		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(member.memId)">
+		 			AND MEMBER.MEM_ID = #{member.memId}
+		 		</if>
+		 		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(member.memName)">
+		 			AND MEM_NAME = #{member.memName}
+		 		</if>
+		 		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(member.memReg1)">
+		 			AND MEM_REG1 = #{member.memReg1}
+		 		</if>
+		 		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(member.memReg2)">
+		 			AND MEM_REG2 LIKE #{member.memReg2}||'%'
+		 		</if>
+		 		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(member.memTel)">
+		 			AND MEM_TEL = #{member.memTel}
+		 		</if>
+		 	</if>
+		 	AND MEM_DELETE = 'N'
+		 	AND MEMBER.MEM_ID = AUTHORITIES.MEM_ID(+)
+		 	AND MEMBER.MEM_TRACK = TRACK.TRACK_NO(+)
+		 </trim>
+	</sql>
+	
+	<resultMap type="kr.or.ddit.vo.MemberVO" id="simpleMemberMap" autoMapping="true">
+		<id property="memId" column="MEM_ID"/>
+		<collection property="memRoles" ofType="string" javaType="list">
+			<result column="MEM_ROLES"/>
+		</collection>
+	</resultMap>
+
+	<select id="selectMember" resultMap="simpleMemberMap">
+		SELECT 
+			MEMBER.MEM_ID, 
+			MEM_PASS, 
+			MEM_NAME,
+			MEM_LOGINFAILCNT, 
+			NVL(USER_CODE, '-') AS USER_CODE, 
+			NVL(CATE_NAME1,'-') AS USER_CATE,
+			MEM_TEL,
+			MEM_REG1,
+			DEPT_CODE,
+			MEM_MAJOR,
+			MEM_TRACK,
+			MEM_COLLEGE,
+			NVL(MEM_SEMESTER,'-') AS MEM_SEMESTER,
+			MEM_REGISTERLIMIT
+			, NVL(MAJOR_DOUBLE,'-') AS MAJOR_DOUBLE
+			, NVL(MAJOR_MINOR, '-') AS MAJOR_MINOR
+			, AUTHORITY MEM_ROLES
+			, TRACK_NAME
+			, MEM_ADVISER
+			, MEM_IMG
+		FROM 
+			MEMBER
+			, CATEGORY
+			, AUTHORITIES
+			, TRACK
+		<include refid="selectMemberFrag" />
+	</select>
+	
+	<update id="updateLoginfailcnt">
+		<selectKey keyProperty="loginFailCnt" resultType="int" order="BEFORE">
+			<choose>
+				<when test="loginFailCnt neq null and loginFailCnt eq 1">
+					SELECT MEM_LOGINFAILCNT + #{loginFailCnt, jdbcType=NUMERIC}
+					FROM MEMBER
+					WHERE MEM_ID = #{memId, jdbcType=VARCHAR}
+				</when>
+				<otherwise>
+					SELECT 0
+					FROM DUAL
+				</otherwise>
+			</choose>
+		</selectKey>
+		UPDATE MEMBER
+		SET MEM_LOGINFAILCNT = #{loginFailCnt, jdbcType=NUMERIC}
+		WHERE MEM_ID = #{memId, jdbcType=VARCHAR}
+	</update>
+	
+	<select id="selectLecturePageAuthorityList" resultType="String">
+		SELECT CLASS_NO
+		<if test="authUserCode eq 'US02'.toString()">
+			FROM CLASS
+			WHERE
+				MEM_NO = #{memId}
+				AND CLASS_DELETE = 'N'
+		</if>
+		<if test="authUserCode eq 'US04'.toString()">
+			FROM CLASSLIST
+			WHERE
+				MEM_NO = #{memId}
+				AND CLASS_STATE = 'Y'
+		</if>
+	</select>
+	
+	<select id="selectDetailMember" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT
+		    MEM_ID
+		    ,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = USER_CODE) AS USER_CODE
+		    ,MEM_NAME,MEM_ENAME
+		   ,TO_CHAR(MEM_BIRTH, 'yyyy-MM-dd') AS MEM_BIRTH ,MEM_REG1 ,MEM_REG2
+		   ,MEM_GENDER,MEM_TEL,MEM_ADD1,MEM_ADD2
+		   ,MEM_MAIL 
+		   ,NVL(MEM_EMPNO,'-') AS MEM_EMPNO
+		   ,MEM_PASS 
+		   ,NVL(RANK_CODE, '-') AS RANK_CODE
+		   ,NVL(DEPT_CODE, '-') AS DEPT_CODE
+		   ,TO_CHAR(MEM_JOINDATE, 'yyyy-MM-dd') AS MEM_JOINDATE 
+		   ,NVL(TO_CHAR(MEM_RESDATE, 'yyyy-MM-dd'), '-') AS MEM_RESDATE 
+		   ,MEM_PERIOD
+		   ,MEM_NATION ,MEM_INSURANCE ,MEM_DELETE ,NVL(MEM_STUNO, '-')
+		   ,NVL(TO_CHAR(MEM_ENTDATE, 'yyyy-MM-dd'), '-') AS MEM_ENTDATE 
+		   ,NVL(TO_CHAR(MEM_GRADATE, 'yyyy-MM-dd'), '-') AS MEM_GRADATE 
+		   ,NVL(MEM_SUBTEL, '-') AS MEM_SUBTEL
+		   ,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR)AS MEM_MAJOR 
+		   ,NVL(MEM_TRACK,'-') AS MEM_TRACK
+		   ,NVL(MAJOR_DOUBLE, '-') AS MAJOR_DOUBLE
+		   ,NVL(MEM_TRACK2,'-') AS MEM_TRACK2
+		   ,NVL(MAJOR_MINOR, '-') AS MAJOR_MINOR 
+		   ,NVL(MEM_TRACK3, '-') AS MEM_TRACK3
+		   ,MEM_GRADUATE 
+		   ,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = ADMISSION_CODE) AS ADMISSION_CODE
+		   ,MEM_ADVISER
+		   ,MEM_ADVISER2 ,MEM_SEMESTER ,MEM_COMMUTE,MEM_LOGINFAILCNT
+		   , MEM_IMG
+		FROM
+    		MEMBER
+		WHERE
+   	 		MEM_ID = #{memId}
+	</select>
+	
+	
+	<select id="selectRankCode" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT 
+			CATE_CODE
+			,CATE_GROUP
+			,CATE_NAME1
+			,CATE_NAME2
+			,CATE_DATE1
+			,CATE_DATE2
+			,CATE_DELETE
+		FROM 
+			CATEGORY
+		WHERE
+			CATE_GROUP = 'RANK_CODE'
+	</select>
+	
+	<select id="selectDeptCode" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT
+			CATE_CODE
+			,CATE_GROUP
+			,CATE_NAME1
+			,CATE_NAME2
+			,CATE_DATE1
+			,CATE_DATE2
+			,CATE_DELETE
+		FROM
+			CATEGORY
+		WHERE
+			CATE_GROUP = 'DEPT_CODE'
+	</select>
+	
+	<select id="selectMajorCode" resultType="kr.or.ddit.vo.MajorVO">
+		SELECT 
+			MAJOR_CODE
+			,MAJOR_NAME
+			,COLLEGE_CODE
+			,MAJOR_WRITER
+			,MAJOR_DATE
+			,MAJOR_PAY
+			,MAJOR_NUMBER
+			,MAJOR_FWRITER
+			,MAJOR_FDATE
+			,MAJOR_DELETE
+			,MAJOR_POINT
+		FROM 
+			MAJOR
+	</select>
+	
+	<select id="selectAdmissionCode" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT
+			CATE_CODE
+			,CATE_GROUP
+			,CATE_NAME1
+			,CATE_NAME2
+			,CATE_DATE1
+			,CATE_DATE2
+			,CATE_DELETE
+		FROM
+			CATEGORY
+		WHERE
+			CATE_GROUP = 'ADMISSION_CODE'
+	</select>
+	
+	
+	<insert id="insertMember" parameterType="kr.or.ddit.vo.MemberVO">
+	
+			<selectKey keyProperty="memId" resultType="String" order="BEFORE">
+				SELECT SUBSTR(EXTRACT(YEAR FROM SYSDATE), 0,4)||'10'||LPAD((SELECT MAX(TO_NUMBER(SUBSTR(MEM_ID, 7))) + 1 FROM MEMBER WHERE MEM_ID LIKE '2021%'),3,0)
+				FROM DUAL
+			</selectKey>
+
+			
+			INSERT INTO MEMBER (
+			    MEM_ID,USER_CODE,MEM_NAME
+			   ,MEM_ENAME,MEM_BIRTH
+			   ,MEM_REG1,MEM_REG2,MEM_GENDER
+			   ,MEM_TEL,MEM_ADD1,MEM_ADD2
+			   ,MEM_MAIL,MEM_PASS,MEM_NATION
+			   
+				<if test="userCode eq 'US01'.toString()">
+			   		,DEPT_CODE
+			   	</if>
+			   	
+			   	<if test="userCode eq 'US01'.toString() or userCode eq 'US02'.toString() or userCode eq 'US03'.toString()">
+			   		,MEM_EMPNO,RANK_CODE,MEM_JOINDATE
+			   		,MEM_INSURANCE
+			   	</if>
+			   	
+			   	<if test="userCode eq 'US02'.toString() or userCode eq 'US03'.toString() or userCode eq 'US04'.toString()">
+				 	,MEM_MAJOR
+				</if>
+			   	
+			 	<if test="userCode eq 'US04'.toString()">
+			 		,MEM_STUNO,MEM_ENTDATE
+			   		,MEM_SUBTEL ,ADMISSION_CODE ,MEM_SEMESTER
+			   		,MEM_COMMUTE
+			 	</if>
+			 	
+			 	<if test="memImg neq null and memImg.length gt 0" >
+			 		, MEM_IMG
+			 	</if>
+			   
+
+			)
+			VALUES (
+				#{memId,jdbcType=VARCHAR},#{userCode,jdbcType=VARCHAR},#{memName,jdbcType=VARCHAR}
+				,#{memEname,jdbcType=VARCHAR},#{memBirth, jdbcType=DATE}
+				,#{memReg1,jdbcType=VARCHAR},#{memReg2,jdbcType=VARCHAR},#{memGender,jdbcType=VARCHAR}
+				,#{memTel,jdbcType=VARCHAR},#{memAdd1,jdbcType=VARCHAR},#{memAdd2,jdbcType=VARCHAR}
+				,#{memMail,jdbcType=VARCHAR},#{memPass,jdbcType=VARCHAR},#{memNation,jdbcType=VARCHAR}
+				
+				<if test="userCode eq 'US01'.toString()">
+					,#{deptCode,jdbcType=VARCHAR}
+				</if>
+				
+				<if test="userCode eq 'US01'.toString() or userCode eq 'US02'.toString() or userCode eq 'US03'.toString()">
+					,#{memId, jdbcType=VARCHAR},#{rankCode, jdbcType=VARCHAR}, #{memJoindate, jdbcType=DATE}
+					, #{memInsurance, jdbcType=VARCHAR} 
+				</if>
+				
+				<if test="userCode eq 'US02'.toString() or userCode eq 'US03'.toString() or userCode eq 'US04'.toString()">
+					,#{memMajor,jdbcType=VARCHAR}
+				</if>
+				
+				<if test="userCode eq 'US04'.toString()">
+			 		,#{memId,jdbcType=VARCHAR}, #{memEntdate,jdbcType=DATE}
+			 		,#{memSubtel, jdbcType=VARCHAR}, #{admissionCode,jdbcType=VARCHAR}, #{memSemester, jdbcType=VARCHAR}
+			 		,#{memCommute, jdbcType=VARCHAR}
+			 	</if>
+			 	
+			 	<if test="memImg neq null and memImg.length gt 0 "> 
+				, #{memImg,jdbcType=BLOB}
+				</if>
+			)   
+		
+	</insert>
+	
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		FROM MEMBER
+		WHERE MEM_DELETE = 'N'
+		<include refid="searchFrag" />
+	</select>
+	
+	<select id="selectMemberList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT B.*
+		FROM (
+		SELECT A.*, ROWNUM RNUM
+		FROM (
+			SELECT
+			    MEM_ID,USER_CODE ,MEM_NAME ,MEM_ENAME
+			   ,MEM_BIRTH,MEM_REG1 ,MEM_REG2
+			   ,MEM_GENDER,MEM_TEL ,MEM_ADD1 ,MEM_ADD2
+			   ,MEM_MAIL ,MEM_EMPNO ,MEM_PASS ,RANK_CODE
+			   ,DEPT_CODE ,MEM_JOINDATE ,MEM_RESDATE ,MEM_PERIOD
+			   ,MEM_NATION ,MEM_INSURANCE ,MEM_DELETE ,MEM_STUNO
+			   ,MEM_ENTDATE ,MEM_GRADATE ,MEM_SUBTEL 
+			   ,NVL((SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR),'-') AS MEM_MAJOR 
+			   ,MEM_TRACK ,MAJOR_DOUBLE ,MEM_TRACK2 ,MAJOR_MINOR
+			   ,MEM_TRACK3 ,MEM_GRADUATE ,MEM_ADVISER
+			   ,MEM_ADVISER2 ,MEM_SEMESTER ,MEM_COMMUTE ,MEM_LOGINFAILCNT
+			   ,ADMISSION_CODE 
+			FROM	
+    			MEMBER
+    			WHERE MEM_DELETE = 'N'
+    			<include refid="searchFrag" />
+    		ORDER BY MEM_ENTDATE DESC
+    			) A
+    		) B
+			WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	
+	
+	<update id="deleteMember" parameterType="String">
+		UPDATE MEMBER
+		SET 
+		MEM_DELETE = 'Y',
+		MEM_RESDATE = SYSDATE
+		WHERE MEM_ID = #{memId }	
+	</update>
+	
+	
+	<update id="updateMember" parameterType="kr.or.ddit.vo.MemberVO">
+		UPDATE MEMBER
+		SET
+			MEM_NAME         = #{memName, jdbcType=VARCHAR}
+			,MEM_ENAME       = #{memEname, jdbcType=VARCHAR}
+			,MEM_BIRTH       = #{memBirth, jdbcType=DATE}
+			,MEM_GENDER      = #{memGender, jdbcType=VARCHAR}
+			,MEM_TEL         = #{memTel, jdbcType=VARCHAR}
+			,MEM_ADD1        = #{memAdd1, jdbcType=VARCHAR}
+			,MEM_ADD2        = #{memAdd2, jdbcType=VARCHAR}
+			,MEM_MAIL        = #{memMail, jdbcType=VARCHAR}
+			,MEM_NATION      = #{memNation, jdbcType=VARCHAR}
+			
+			<if test="userCode eq 'US01'.toString() or userCode eq 'US02'.toString() or userCode eq 'US03'.toString()">
+			,RANK_CODE       = #{rankCode, jdbcType=VARCHAR}
+			,DEPT_CODE       = #{deptCode, jdbcType=VARCHAR}
+			,MEM_RESDATE     = #{memResdate, jdbcType=DATE}
+			,MEM_INSURANCE   = #{memInsurance, jdbcType=VARCHAR}
+			</if>
+			
+			<if test="userCode eq 'US03'.toString() or userCode eq 'US04'.toString() or userCode eq 'US02'.toString()">
+			,MEM_MAJOR       = #{memMajor, jdbcType=VARCHAR}
+			</if>
+			
+			<if test="userCode eq 'US04'.toString()">
+			,MEM_GRADATE     = #{memGradate, jdbcType=DATE}
+			,MEM_SUBTEL      = #{memSubtel, jdbcType=VARCHAR}
+			,ADMISSION_CODE  = #{admissionCode, jdbcType=VARCHAR}
+			,MEM_SEMESTER    = #{memSemester, jdbcType=VARCHAR}
+			,MEM_COMMUTE     = #{memCommute, jdbcType=VARCHAR}
+			</if>
+			
+			<if test="memImg neq null and memImg.length gt 0">
+			, MEM_IMG = #{memImg,jdbcType=BLOB}
+			</if>
+			
+		WHERE MEM_ID = #{memId, jdbcType=VARCHAR }
+	</update>
+	
+	<update id="updateResetPassword">
+		UPDATE MEMBER
+		   SET
+		       MEM_PASS = #{memPass, jdbcType=VARCHAR}
+		 WHERE
+		       MEM_ID = #{memId, jdbcType=VARCHAR}
+	</update>
+	
+	<update id="updateUnlockAccount">
+		UPDATE MEMBER
+		   SET
+		       MEM_LOGINFAILCNT = 0
+		 WHERE
+		       MEM_ID = #{memId, jdbcType=VARCHAR}
+	</update>
+	
+	<select id="selectStudentMyPage" parameterType="kr.or.ddit.vo.MemberVO" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT    A.MEM_ID
+				, A.MEM_NAME
+				, TO_CHAR(A.MEM_BIRTH, 'YYYY-MM-DD') AS MEM_BIRTH
+				, A.MEM_GENDER
+				, A.MEM_TEL
+				, A.MEM_ADD1
+				, A.MEM_ADD2
+				, A.MEM_MAIL
+				, A.MEM_NATION
+				, (SELECT
+			            (SELECT CATE_NAME1 
+			               FROM CATEGORY             
+			              WHERE CATE_CODE = (SELECT SUBSTR(MEM_SEMESTER, 0, 4)
+											   FROM MEMBER
+											  WHERE MEM_ID = #{memId, jdbcType=VARCHAR})) || ' ' || (SELECT SUBSTR(MEM_SEMESTER, 6, 1)||' 학년' 
+												                                                      FROM MEMBER                        
+												                                                     WHERE MEM_ID = #{memId, jdbcType=VARCHAR}) || (SELECT SUBSTR(MEM_SEMESTER, 8, 1)||' 학기'                               
+																                                                                                      FROM MEMBER                              
+																                                                                                     WHERE MEM_ID = #{memId, jdbcType=VARCHAR}) AS MEM_SEMESTER
+		            FROM MEMBER
+		           WHERE MEM_ID = #{memId, jdbcType=VARCHAR}) AS MEM_SEMESTER
+				, (SELECT MAJOR_NAME
+                     FROM MAJOR
+                    WHERE A.MEM_MAJOR = MAJOR_CODE) AS MEM_MAJOR
+				, A.MEM_IMG
+				, A.MEM_GRADUATE
+				, B.MEM_NAME AS MEM_ADVISER
+		  FROM MEMBER A, MEMBER B
+		 WHERE A.MEM_ID = #{memId, jdbcType=VARCHAR}
+		   AND A.USER_CODE = 'US04'
+		   AND A.MEM_ADVISER = B.MEM_ID
+	</select>
+	
+	<select id="selectProfessorMyPage" parameterType="kr.or.ddit.vo.MemberVO" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT    MEM_ID
+				, MEM_NAME
+				, TO_CHAR(MEM_BIRTH, 'YYYY-MM-DD') AS MEM_BIRTH
+				, MEM_GENDER
+				, MEM_TEL
+				, MEM_ADD1
+				, MEM_ADD2
+				, MEM_MAIL
+				, MEM_NATION
+				, TO_CHAR(MEM_JOINDATE, 'YYYY-MM-DD') AS MEM_JOINDATE
+		        , MEM_INSURANCE
+		        , MEM_IMG
+		        , (SELECT CATE_NAME1 
+					 FROM CATEGORY 
+					WHERE CATE_CODE = RANK_CODE) AS RANK_CODE
+		        , (SELECT CATE_NAME1 
+					 FROM CATEGORY 
+					WHERE CATE_CODE = MEM_COLLEGE) AS MEM_COLLEGE
+		  FROM MEMBER
+		 WHERE MEM_ID = #{memId, jdbcType=VARCHAR}
+		   AND USER_CODE = 'US02'
+	</select>
+	
+	<select id="selectManagerMyPage" parameterType="kr.or.ddit.vo.MemberVO" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT    MEM_ID
+				, MEM_NAME
+				, TO_CHAR(MEM_BIRTH, 'YYYY-MM-DD') AS MEM_BIRTH
+				, MEM_GENDER
+				, MEM_TEL
+				, MEM_ADD1
+				, MEM_ADD2
+				, MEM_MAIL
+				, MEM_NATION
+				, MEM_IMG
+				, (SELECT CATE_NAME1
+                     FROM CATEGORY
+                    WHERE CATE_CODE = RANK_CODE) AS RANK_CODE
+		        , (SELECT CATE_NAME1
+                     FROM CATEGORY
+                    WHERE CATE_CODE = DEPT_CODE) AS DEPT_CODE
+				, TO_CHAR(MEM_JOINDATE, 'YYYY-MM-DD') AS MEM_JOINDATE
+		        , MEM_INSURANCE
+		  FROM MEMBER
+		 WHERE MEM_ID = #{memId, jdbcType=VARCHAR}
+	</select>
+	
+	<update id="updateMyPage" parameterType="kr.or.ddit.vo.MemberVO">
+		UPDATE MEMBER
+		   SET    MEM_TEL    = #{memTel, jdbcType=VARCHAR}
+				, MEM_ADD1   = #{memAdd1, jdbcType=VARCHAR}
+				, MEM_ADD2   = #{memAdd2, jdbcType=VARCHAR}
+				, MEM_MAIL   = #{memMail, jdbcType=VARCHAR}
+				<if test="memImg neq null and memImg.length gt 0">
+				, MEM_IMG = #{memImg,jdbcType=BLOB}
+				</if>
+		 WHERE MEM_ID = #{memId, jdbcType=VARCHAR}
+	</update>
+	
+</mapper>

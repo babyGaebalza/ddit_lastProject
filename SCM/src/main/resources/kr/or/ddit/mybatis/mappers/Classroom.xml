@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_aca.croommanager.dao.ClassRoomDao">
+
+	<sql id="searchFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'college'">
+					AND INSTR(COLLEGE_CODE, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'name'">
+					AND INSTR(FAC_NAME, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND INSTR(FAC_NAME, #{searchVO.searchWord}) > 0
+					OR INSTR(COLLEGE_CODE, #{searchVO.searchWord}) > 0
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<sql id="searchFrag2">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'member'">
+					AND INSTR(RES_MEM, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND INSTR(RES_MEM, #{searchVO.searchWord}) > 0
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+
+	<select id="selecttotalCRoom" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		FROM FACILITIES
+		WHERE FAC_CODE = 'FC99'
+		<include refid="searchFrag" />
+	</select>
+
+	<select id="selectCRoomList" resultType="kr.or.ddit.vo.FacilityVO" >
+		SELECT B.*
+		FROM
+		(
+			SELECT A.* , ROWNUM RNUM
+			FROM
+				(
+				SELECT
+				    FAC_NO,FAC_CODE,FAC_NUMBER
+				   ,FAC_NAME
+				   ,FAC_PAY,FAC_RESULT
+				   ,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = COLLEGE_CODE) AS COLLEGE_CODE
+				   ,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = A.MAJOR_CODE) AS MAJOR_CODE
+				FROM
+				    FACILITIES A
+				WHERE 
+					FAC_CODE = 'FC99'
+				) A
+			) B
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]> 
+		<include refid="searchFrag" />
+		
+	</select>
+
+	<select id="selectcroomInfo" parameterType="String" resultType="kr.or.ddit.vo.FacilityVO">
+		SELECT
+			FAC_NO,FAC_CODE,FAC_NUMBER
+			,FAC_NAME
+			,FAC_PAY,FAC_RESULT
+			,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = COLLEGE_CODE) AS COLLEGE_CODE
+			 ,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = A.MAJOR_CODE) AS MAJOR_CODE
+		FROM
+			FACILITIES A 
+		WHERE
+			FAC_CODE = 'FC99'
+		AND
+			FAC_NO = #{facNo }
+	</select>
+	
+
+	<select id="retrieveCRresList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.ReservationVO">
+	SELECT B.*
+		FROM
+		(
+			SELECT A.* , ROWNUM RNUM
+			FROM
+				(
+				SELECT
+				    RES_NO
+				   ,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = RES_MEM ) AS RES_MEM
+				   ,FAC_NO
+				   ,LIB_NO
+				   ,RES_SDATE
+				   ,RES_EDATE
+				   ,RES_WDATE
+				   ,RES_RDATE
+				   ,RES_HISTORY
+				   ,RES_REBANK
+				   ,RES_REACCOUNT
+				   ,RES_COUNT
+				   ,RES_REASON
+				   ,RES_CLASS_A
+				   ,RES_CLASS_B
+				   ,RES_TIME_CLASS
+				FROM
+   					 RESERVATION
+    				WHERE
+					FAC_NO = #{other} 
+
+				) A
+			) B
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]> 
+	</select>
+	
+	<select id="selectMajorCode" resultType="kr.or.ddit.vo.MajorVO">
+		SELECT 
+			MAJOR_CODE
+			,MAJOR_NAME
+			,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = COLLEGE_CODE) AS COLLEGE_CODE
+			,MAJOR_WRITER
+			,MAJOR_DATE
+			,MAJOR_PAY
+			,MAJOR_COUNT
+			,MAJOR_FWRITER
+			,MAJOR_FDATE
+			,MAJOR_DELETE
+			,MAJOR_POINT
+		FROM 
+			MAJOR
+		ORDER BY MAJOR_NAME ASC
+	</select>
+
+
+	<select id="selectCollegeCode" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT
+		    CATE_CODE
+		   ,CATE_GROUP
+		   ,CATE_NAME1
+		   ,CATE_NAME2
+		   ,CATE_DATE1
+		   ,CATE_DATE2
+		   ,CATE_DELETE
+		FROM
+		    CATEGORY
+		WHERE
+			CATE_GROUP = 'COLLEGE_CODE'
+	</select>
+	
+	
+	<update id="updateCRoom" parameterType="kr.or.ddit.vo.FacilityVO">
+		UPDATE FACILITIES
+		SET
+			FAC_RESULT = #{facResult, jdbcType=VARCHAR},
+			MAJOR_CODE = (SELECT MAJOR_CODE FROM MAJOR WHERE MAJOR_NAME = #{majorCode}),
+			COLLEGE_CODE = (SELECT COLLEGE_CODE FROM MAJOR WHERE MAJOR_NAME = #{majorCode}),
+			FAC_NUMBER = #{facNumber, jdbcType=NUMERIC}
+		WHERE
+			FAC_NO = #{facNo, jdbcType=VARCHAR}
+	</update>
+	
+	
+		<select id="selectWho" parameterType="String" resultType="kr.or.ddit.vo.MemberVO">
+			SELECT
+			    MEM_ID
+			FROM 
+			    MEMBER 
+			WHERE 
+			    (DEPT_CODE = 'D4C3') 
+			OR 
+			    (USER_CODE = 'US03' AND MEM_MAJOR = (SELECT MAJOR_CODE FROM MAJOR WHERE MAJOR_NAME = #{major})) 
+			OR
+			    (USER_CODE = 'US02' AND MEM_MAJOR = (SELECT MAJOR_CODE FROM MAJOR WHERE MAJOR_NAME = #{major}))
+		</select>
+		
+	<update id="insertPush" parameterType="kr.or.ddit.vo.PushVO">
+		<selectKey keyProperty="pushNo" resultType="String" order="BEFORE">
+			SELECT NVL(MAX(PUSH_NO )+1, 1) FROM PUSH
+		</selectKey>
+		<foreach collection="whoList" item="item" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" " index="index">		
+				
+			INTO PUSH (
+				PUSH_NO
+				,PUSH_MEM
+				,PUSH_CODE
+				,PUSH_TITLE
+				,PUSH_CONT
+			)
+			VALUES
+				(
+					#{pushNo}+#{index}
+					,#{item.memId}
+					,'P02'
+					,#{pushTitle}
+					,#{pushCont}
+				)
+		</foreach>
+	</update>
+	
+</mapper>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.category.dao.CategoryDAO">
+
+<select id="selectCategoryList" resultType="kr.or.ddit.vo.CategoryVO">
+		SELECT
+		    CATE_CODE
+		   ,CATE_GROUP
+		   ,CATE_NAME1
+		   ,CATE_NAME2
+		   ,CATE_DATE1
+		   ,CATE_DATE2
+		   ,CATE_DELETE
+		FROM
+		    CATEGORY
+		WHERE
+			CATE_GROUP = #{codeGroup}
+		ORDER BY CATE_NAME1
+</select>
+
+</mapper>

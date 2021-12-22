@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.student.mainpage.dao.StudentMainDAO">
+
+<select id="selectTimeTable" resultType="kr.or.ddit.academic.vo.StuTimeTableVO">
+	SELECT
+    stutime_year
+  , stutime_semester
+  , stutime_day
+  , mem_id
+  , stutime1
+  , stutime2
+  , stutime3
+  , stutime4
+  , stutime5
+  , stutime6
+  , stutime7
+  , stutime8
+  , stutime9
+FROM
+    stu_timetable
+WHERE
+    stutime_year = EXTRACT(YEAR FROM SYSDATE)
+    AND   stutime_semester = (
+        SELECT
+            substr(sch_decode, 8)
+        FROM
+            schedule
+        WHERE
+            sch_decode LIKE '%SM%'
+            AND   SYSDATE BETWEEN sch_sdate AND sch_edate
+    )
+    AND   mem_id = #{memId}
+ORDER BY
+    (
+        CASE
+            WHEN stutime_day = '월' THEN 1
+            WHEN stutime_day = '화' THEN 2
+            WHEN stutime_day = '수' THEN 3
+            WHEN stutime_day = '목' THEN 4
+            WHEN stutime_day = '금' THEN 5
+        END
+    )
+</select>
+	
+<resultMap type="kr.or.ddit.vo.ClassListVO" id="classListMap" autoMapping="true">
+	<association property="classInfo" autoMapping="true"/>
+</resultMap>
+	
+<select id="selectStudentClassList" resultMap="classListMap">
+	SELECT
+	    EXTRACT(YEAR FROM CL.CLASS_DATE) AS CLASS_YEAR
+	  , CL.CLASS_SEMESTER
+	  , CL.CLASS_NO
+	  , C.CLASS_NAME
+	  , CL.CLASS_CODE
+	  , C.CLASS_POINT
+	  , CL.CLASS_SCORE
+	FROM
+	    CLASSLIST CL
+	  , CLASS C
+	WHERE
+	    CL.CLASS_NO = C.CLASS_NO
+	    AND   CL.MEM_NO = #{memId}
+	    AND   CLASS_SCORE IS NOT NULL
+	ORDER BY
+	    EXTRACT(YEAR FROM CL.CLASS_DATE) DESC
+	  , CL.CLASS_SEMESTER DESC
+	  , CLASS_NO
+	  , CL.CLASS_CODE
+</select>	
+
+
+</mapper>

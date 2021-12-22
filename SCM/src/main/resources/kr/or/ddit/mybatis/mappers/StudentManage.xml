@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.assistant.studentmanage.dao.StudentManageDAO">
+
+<sql id="searchFrag">
+	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+		<choose>
+			<when test="searchVO.searchType eq 'number'">
+				AND INSTR(MEM_ID, #{searchVO.searchWord}) > 0
+			</when>
+			<when test="searchVO.searchType eq 'name'">
+				AND INSTR(MEM_NAME, #{searchVO.searchWord}) > 0
+			</when>
+			<otherwise>
+				AND
+				(INSTR(MEM_ID, #{searchVO.searchWord}) > 0
+				OR INSTR(MEM_NAME, #{searchVO.searchWord}) > 0)
+			</otherwise>
+		</choose>
+	</if>
+</sql>
+
+<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+	SELECT COUNT(*)
+		FROM MEMBER
+	WHERE mem_major = #{searchVO.searchWord2}
+	AND USER_CODE = 'US04'
+	<include refid="searchFrag" />
+</select>
+
+<resultMap type="kr.or.ddit.vo.MemberVO" autoMapping="true" id="selectMemberByAssistantMap">
+	<id column="MEM_ID" property="memId"/>
+	
+	<association property="major1" autoMapping="true" />
+	<association property="adviser1">
+		<result property="memName" column="ADVISER1_NAME" jdbcType="VARCHAR"/>
+	</association>
+</resultMap>
+
+<select id="selectMember" parameterType="String" resultMap="selectMemberByAssistantMap">
+SELECT
+    a.mem_id, a.mem_name, a.mem_reg1 
+	 , a.mem_reg2, a.mem_mail, a.mem_add1, a.mem_add2, a.mem_tel
+  , b.major_name
+  , NVL((select c.mem_name from member c where c.mem_id = a.mem_adviser), '없음') AS adviser1_name
+FROM
+    member a
+  , major b
+  WHERE
+    a.mem_major = b.major_code
+    AND   a.mem_id = #{memId}
+    AND   a.user_code = 'US04'
+</select>
+
+<resultMap type="kr.or.ddit.vo.MemberVO" autoMapping="true" id="selectStudentList">
+	<id column="MEM_ID" property="memId"/>
+	
+	<association property="major1" autoMapping="true" />
+</resultMap>
+<select id="selectMemberList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="selectStudentList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+           SELECT
+			    mem_id 
+			  , mem_name
+			  , major_name
+			FROM
+			    MEMBER,
+			    MAJOR
+           WHERE 
+	           MEM_MAJOR = MAJOR_CODE
+	           AND MEM_DELETE = 'N'
+	           AND mem_major = #{searchVO.searchWord2}
+	           AND USER_CODE = 'US04'
+	           <include refid="searchFrag" />
+	           ORDER BY MEM_ID
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<update id="updateMember" parameterType="kr.or.ddit.vo.MemberVO">
+	UPDATE MEMBER
+	SET
+	    MEM_NAME = #{memName,jdbcType=VARCHAR},
+	    MEM_TEL = #{memTel,jdbcType=VARCHAR},
+	    MEM_ADD1 = #{memAdd1,jdbcType=VARCHAR},
+	    MEM_ADD2 = #{memAdd2,jdbcType=VARCHAR},
+	    MEM_MAIL = #{memMail,jdbcType=VARCHAR},
+	    MEM_ADVISER = #{memAdviser,jdbcType=VARCHAR}
+	WHERE MEM_ID = #{memId,jdbcType=VARCHAR}
+</update>
+
+<select id="selectAdviserList" resultType="hashMap" >
+SELECT MEM_ID "memId", MEM_NAME "memName"
+	FROM MEMBER
+WHERE USER_CODE = 'US02'
+AND mem_major = #{memMajor}
+</select>
+
+</mapper>

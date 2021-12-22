@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.calendar.dao.CalendarDAO">
+	
+	<!-- 마지막 날짜 + 1 (javascript는 날짜 -1되어 나오기 때문) -->
+	<select id="calendarList" resultType="Map">
+	SELECT 
+	    SCH_NO as id, 
+	    SCH_CONT as title,
+	    TO_CHAR(SCH_SDATE, 'YYYY-MM-DD"T"HH24:MI:SS') start1,
+	    TO_CHAR(TO_DATE(SCH_EDATE) + INTERVAL '1' DAY, 'YYYY-MM-DD"T"HH24:MI:SS') end1
+	FROM SCHEDULE 
+	</select>
+
+</mapper>

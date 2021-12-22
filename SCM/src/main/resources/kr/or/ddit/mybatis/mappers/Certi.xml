@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.off_gen.certificatemanage.dao.CertificateManageDAO">
+
+<sql id="searchFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'code'">
+					AND INSTR(cate_code, #{searchVO.searchWord}) > 0
+				</when>
+				<when test="searchVO.searchType eq 'name'">
+					AND INSTR(cate_name1, #{searchVO.searchWord}) > 0
+				</when>
+				<otherwise>
+					AND
+					(INSTR(cate_code, #{searchVO.searchWord}) > 0
+					OR INSTR(cate_name1, #{searchVO.searchWord}) > 0
+				</otherwise>
+			</choose>
+		</if>
+</sql>
+
+<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+	FROM CATEGORY 
+WHERE CATE_GROUP = 'CERTI_CODE'
+and cate_delete = 'N'
+<include refid="searchFrag" />
+</select>
+
+<select id="selectCategoryList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.CategoryVO">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+           SELECT CATE_CODE, CATE_NAME1, CATE_VALUE1, CATE_DELETE
+				FROM CATEGORY
+			WHERE CATE_GROUP = 'CERTI_CODE'
+			and cate_delete = 'N'
+			<include refid="searchFrag" />
+          	ORDER BY CATE_CODE DESC
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<select id="selectCategory" parameterType="String" resultType="kr.or.ddit.vo.CategoryVO">
+SELECT 
+	CATE_CODE
+  , CATE_NAME1
+  , CATE_VALUE1
+FROM CATEGORY
+WHERE CATE_CODE = #{cateCode}
+</select>
+
+<update id="updateCategory" parameterType="kr.or.ddit.vo.CategoryVO">
+UPDATE CATEGORY
+SET
+	CATE_NAME1 = #{cateName1},
+	CATE_VALUE1 = #{cateValue1}
+WHERE CATE_CODE = #{cateCode}
+</update>
+
+<update id="updateCerti" parameterType="kr.or.ddit.administration.vo.CertiVO">
+UPDATE CERTI 
+SET
+	CERTI_ISSDATE = SYSDATE,
+	CERTI_STATE = #{certiState},
+	CERTI_ISSUE = 'D012105'
+where CERTI_NO = #{certiNo}
+</update>
+
+<select id="selectTotalCerti" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+FROM CERTI
+</select>
+
+<resultMap type="kr.or.ddit.administration.vo.CertiVO" autoMapping="true" id="certiList">
+	<id column="CERTI_NO" property="certiNo"/>
+	
+	<association property="category1" autoMapping="true" />
+	<association property="member1" autoMapping="true" />
+</resultMap>
+<select id="selectCertiList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="certiList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+           SELECT
+			    CERTI_NO, CERTI_REQ
+			  , CERTI_REASON, CERTI_STATE, CERTI_COUNT
+			  , CATE_VALUE1, CATE_CODE, CATE_NAME1
+			  , MEM_NAME
+			FROM 
+				CERTI,
+				CATEGORY,
+				MEMBER
+			WHERE
+				CERTI_CODE = CATE_CODE
+				AND CERTI_REQ = MEM_ID
+				
+          		ORDER BY CERTI_NO DESC
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<resultMap type="kr.or.ddit.administration.vo.CertiVO" id="certiSelect" autoMapping="true">
+	<id column="CERTI_NO" property="certiNo"/>
+	
+	<association property="category1" autoMapping="true"/>
+	<association property="member1" autoMapping="true"/>
+</resultMap>
+<select id="selectCerti" parameterType="String" resultMap="certiSelect">
+SELECT
+    A.CERTI_NO, A.CERTI_CODE, A.CERTI_REQDATE, A.CERTI_REQ
+  , A.CERTI_REASON, A.CERTI_STATE, A.CERTI_COUNT
+  , B.CATE_VALUE1, B.CATE_CODE, B.CATE_NAME1
+FROM
+    CERTI A,
+    CATEGORY B
+WHERE 
+	A.CERTI_CODE= B.CATE_CODE
+	AND A.CERTI_NO = #{certiNo}
+</select>
+
+<insert id="insertCerti" parameterType="kr.or.ddit.administration.vo.CertiVO">
+	<selectKey keyProperty="certiNo" resultType="String" order="BEFORE">
+		SELECT CERTI_SEQ.NEXTVAL
+		FROM DUAL
+	</selectKey>
+	INSERT INTO CERTI (
+	    CERTI_NO
+	  , CERTI_CODE
+	  , CERTI_REQ
+	  , CERTI_REQDATE
+	  , CERTI_REASON
+	  , CERTI_STATE
+	  , CERTI_COUNT
+	) VALUES (
+	    #{certiNo, jdbcType=VARCHAR}
+	  , #{certiCode, jdbcType=VARCHAR}
+	  , #{certiReq, jdbcType=VARCHAR}
+	  , SYSDATE
+	  , #{certiReason, jdbcType=VARCHAR}
+	  , 'N'
+	  , #{certiCount, jdbcType=VARCHAR}
+	)
+</insert>
+
+<select id="selectTotalCheck" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+FROM CERTI
+where certi_req = #{searchVO.searchWord2} 
+</select>
+
+<resultMap type="kr.or.ddit.administration.vo.CertiVO" autoMapping="true" id="certiCheck">
+	<id column="CERTI_NO" property="certiNo"/>
+	
+	<association property="category1" autoMapping="true" />
+</resultMap>
+<select id="selectCheckList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="certiCheck">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+            SELECT
+			    CERTI_NO, CERTI_REQ
+			  , CERTI_REASON, CERTI_STATE, CERTI_COUNT
+			  , CATE_VALUE1, CATE_CODE, CATE_NAME1
+			FROM 
+				CERTI,
+				CATEGORY
+			WHERE
+				CERTI_CODE = CATE_CODE
+				and certi_req = #{searchVO.searchWord2}
+        		ORDER BY CERTI_NO DESC
+           ) A  
+       ) B 
+WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+</select>
+
+<!-- 비동기 select박스 만들기 -->
+<select id="selectCertificate" resultType="hashMap">
+select cate_code "cateCode", cate_name1 "cateName1", cate_value1 "cateValue1"
+	from category
+WHere CATE_CODE IN ('CED01', 'CED02', 'CED03', 'CED04', 'CED05', 'CED06', 'CED07', 'CED08')
+and cate_delete = 'N'
+</select>
+
+<!-- 비동기 수수료 구하기 -->
+<select id="selectCertificateValue" resultType="kr.or.ddit.vo.CategoryVO" parameterType="kr.or.ddit.vo.CategoryVO">
+select cate_code "cateCode", cate_name1 "cateName1", cate_value1 "cateValue1"
+	from category
+WHere CATE_CODE = #{cateCode}
+</select>
+
+<insert id="insertCertificate" parameterType="kr.or.ddit.administration.vo.CertiVO">
+	<selectKey keyProperty="certiNo" resultType="String" order="BEFORE">
+		SELECT CERTI_SEQ.NEXTVAL
+		FROM DUAL
+	</selectKey>
+	INSERT INTO CERTI (
+	    CERTI_NO
+	  , CERTI_CODE
+	  , CERTI_REQ
+	  , CERTI_REQDATE
+	  , CERTI_ISSDATE
+	  , CERTI_REASON
+	  , CERTI_STATE
+	  , CERTI_COUNT
+	  , CERTI_ISSUE
+	) VALUES (
+	    #{certiNo, jdbcType=VARCHAR}
+	  , #{certiCode, jdbcType=VARCHAR}
+	  , #{certiReq, jdbcType=VARCHAR}
+	  , SYSDATE
+	  , NULL
+	  , #{certiReason, jdbcType=VARCHAR}
+	  , 'N'
+	  , #{certiPrice, jdbcType=NUMERIC}
+	  , #{certiCount, jdbcType=VARCHAR}
+	  , NULL
+</insert>
+
+<update id="update">
+UPDATE CERTI 
+SET
+	CERTI_ISSDATE = SYSDATE,
+	CERTI_STATE = 'Y',
+	CERTI_ISSUE = 'D012105'
+where CERTI_NO = #{certiNo,jdbcType=VARCHAR}
+</update>
+
+<update id="updateCateState">
+UPDATE CATEGORY
+SET
+	CATE_DELETE = 'Y'
+where CATE_CODE = #{cateCode,jdbcType=VARCHAR}
+</update>
+
+<select id="selectCateList" resultType="hashMap">
+SELECT cate_code "cateCode", cate_name1 "cateName1"
+from category
+where cate_group = 'CERTI_CODE'
+</select>
+
+</mapper>

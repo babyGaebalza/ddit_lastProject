@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.mainpage.dao.AdminMainDao">
+
+<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+SELECT COUNT(*)
+	FROM DOCUMENT
+WHERE DOCU_CODE = 'DOC17'
+AND
+	DOCU_STATE = 'N'
+</select>
+
+<resultMap type="kr.or.ddit.vo.DocumentVO" autoMapping="true" id="selectDocumentList">
+	<id column="DOCU_NO" property="docuNo"/>
+	
+	<association property="member1" autoMapping="true"/>
+	<association property="category1" autoMapping="true"/>
+</resultMap>
+<select id="selectDocumentList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="selectDocumentList">
+SELECT B.*
+FROM (
+   	SELECT A.*, ROWNUM RNUM
+       FROM (
+			SELECT
+               DOCU_NO, DOCU_STATE, DOCU_CODE, TO_CHAR(DOCU_REQDATE,'YYYY-MM-DD') DOCU_REQDATE, DOCU_FILENAME
+               , MEM_NAME, (SELECT MAJOR_NAME FROM MAJOR WHERE MEM_MAJOR = MAJOR_CODE) MEM_MAJOR
+               , CATE_CODE, CATE_NAME1
+			FROM 
+	           DOCUMENT 
+	           , MEMBER
+	           , CATEGORY
+         	WHERE
+         		DOCU_REQ = MEM_ID
+         		AND DOCU_CODE = CATE_CODE
+         		AND DOCU_CODE= 'DOC17'
+         	AND
+         		DOCU_STATE = 'N'
+         	ORDER BY DOCU_NO DESC
+           ) A  
+       ) B 
+</select>
+
+
+
+</mapper>

@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.mainPage.dao.ProftMainDAO">
+<select id="selectTimeTable" resultType="kr.or.ddit.academic.vo.StuTimeTableVO">
+select  STUTIME1, STUTIME2, STUTIME3, STUTIME4, 
+        STUTIME5, STUTIME6, STUTIME7, STUTIME8
+from 
+
+(select N.*, ROWNUM RNUM from 
+    (select null from dual union all select null from dual union all
+     select null from dual union all select null from dual union all select null from dual
+    ) N
+order by rnum
+)NN
+
+left outer join 
+
+
+
+(
+select A.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME1" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '1') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월1%' THEN 1
+            WHEN class_time LIKE '%화1%' THEN 2
+            WHEN class_time LIKE '%수1%' THEN 3
+            WHEN class_time LIKE '%목1%' THEN 4
+            WHEN class_time LIKE '%금1%' THEN 5
+        END
+    )
+) A
+) AA
+on AA.RNUM = NN.RNUM
+
+left outer join 
+(
+select B.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME2" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '2') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월12%' THEN 1
+            WHEN class_time LIKE '%화2%' THEN 2
+            WHEN class_time LIKE '%수2%' THEN 3
+            WHEN class_time LIKE '%목2%' THEN 4
+            WHEN class_time LIKE '%금2%' THEN 5
+        END
+    )
+) B
+) BB
+on NN.RNUM = BB.RNUM
+left outer join 
+(
+select C.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME3"
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '3') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월3%' THEN 1
+            WHEN class_time LIKE '%화3%' THEN 2
+            WHEN class_time LIKE '%수3%' THEN 3
+            WHEN class_time LIKE '%목3%' THEN 4
+            WHEN class_time LIKE '%금3%' THEN 5
+        END
+    )
+) C
+) CC
+on NN.RNUM = CC.RNUM
+left outer join 
+(
+select D.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME4" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '4') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월4%' THEN 1
+            WHEN class_time LIKE '%화4%' THEN 2
+            WHEN class_time LIKE '%수4%' THEN 3
+            WHEN class_time LIKE '%목4%' THEN 4
+            WHEN class_time LIKE '%금4%' THEN 5
+        END
+    )
+) D
+) DD
+on NN.RNUM = DD.RNUM
+left outer join 
+(
+select E.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME5" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '5') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월5%' THEN 1
+            WHEN class_time LIKE '%화5%' THEN 2
+            WHEN class_time LIKE '%수5%' THEN 3
+            WHEN class_time LIKE '%목45%' THEN 4
+            WHEN class_time LIKE '%금5%' THEN 5
+        END
+    )
+) E
+) EE
+on NN.RNUM = EE.RNUM
+left outer join 
+(
+select F.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME6" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '6') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월6%' THEN 1
+            WHEN class_time LIKE '%화56%' THEN 2
+            WHEN class_time LIKE '%수6%' THEN 3
+            WHEN class_time LIKE '%목6%' THEN 4
+            WHEN class_time LIKE '%금6%' THEN 5
+        END
+    )
+) F
+) FF
+on NN.RNUM = FF.RNUM
+left outer join 
+(
+select G.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME7" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '7') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월7%' THEN 1
+            WHEN class_time LIKE '%화7%' THEN 2
+            WHEN class_time LIKE '%수7%' THEN 3
+            WHEN class_time LIKE '%목7%' THEN 4
+            WHEN class_time LIKE '%금7%' THEN 5
+        END
+    )
+) G
+) GG
+on NN.RNUM = GG.RNUM
+left outer join 
+(
+select H.*, ROWNUM RNUM
+from 
+(select '(' || CLASS_NO ||  ')'||CLASS_NAME as "STUTIME8" 
+from class
+where mem_no = #{memId}
+and class_delete = 'N'
+<!-- and class_semester= '2/2' -->
+AND INSTR(class_time, '8') > 0
+
+ORDER BY
+    (
+        CASE
+            WHEN class_time LIKE '%월8%' THEN 1
+            WHEN class_time LIKE '%화8%' THEN 2
+            WHEN class_time LIKE '%수8%' THEN 3
+            WHEN class_time LIKE '%목8%' THEN 4
+            WHEN class_time LIKE '%금8%' THEN 5
+        END
+    )
+) H
+) HH
+on NN.RNUM = HH.RNUM
+order by NN.RNUM
+</select>
+
+</mapper>

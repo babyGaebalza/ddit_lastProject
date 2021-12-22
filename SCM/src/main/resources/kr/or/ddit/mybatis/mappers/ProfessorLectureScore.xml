@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.lecturePage.dao.LectureScoreManageDAO">
+
+<select id="selectScoreList" resultType="kr.or.ddit.vo.ClassListVO">
+WITH A AS (
+select CLASSLIST_NO, CLASS_STUDENT, sum(ATDC_POINT) AS "ATDC_POINTSUM"
+
+from attendance, member
+where class_no =#{searchVO.searchWord}
+and CLASS_STUDENT = mem_id 
+group by CLASS_STUDENT, CLASSLIST_NO
+)
+,
+T as (
+select NVL(AVG(task_score),0) as avg_task_score, mem_id 
+from (
+SELECT case when task_score = 'N'  then 0
+            else cast(TASK_SCORE as number(3))
+       end as task_score
+       ,  MEM_ID
+FROM task 
+WHERE CLASS_NO = #{searchVO.searchWord}
+) numberTask
+group by mem_id
+)
+
+select * from 
+(select ABC.*, ROWNUM RNUM 
+from 
+(select  
+C.CLASSLIST_NO,
+
+
+NVL(C.CLASS_MID,0)/ 100 *  
+(select CLASS_MIDPOINT from class where class_no = #{searchVO.searchWord}) as CLASS_MID_CHANGE,
+
+NVL(C.CLASS_FIN,0) / 100 * 
+(select CLASS_FINPOINT from class where class_no = #{searchVO.searchWord}) as CLASS_FIN_CHANGE,
+
+NVL(C.CLASS_SCORE,0) AS CLASS_SCORE, 
+
+round(NVL(A.ATDC_POINTSUM,0)  / (select  CLASS_POINT * 17  from class
+                                where class_no = #{searchVO.searchWord}) 
+                            * (select CLASS_ATTPOINT from class where class_no = #{searchVO.searchWord})
+       , 2 )   as ATDC_CHANGE_POINTSUM               
+, NVL(T.avg_task_score,0)  * (select CLASS_TASKPOINT from class where class_no = #{searchVO.searchWord}) / 10
+  as avg_task_change_score        
+,C.MEM_NO 
+,M.mem_name as memName
+
+from CLASSLIST C left outer join  A on(A.CLASSLIST_NO = C.CLASSLIST_NO)
+    left outer join T on (T.MEM_ID = C.mem_no)
+    left outer join member M on(c.mem_no = m.mem_id) 
+where CLASS_NO = #{searchVO.searchWord}
+ORDER BY memName
+) ABC
+) TABLEALL
+where RNUM between #{startRow} and #{endRow}
+</select>
+
+
+
+
+
+<select id="selectTotalRecord" resultType="int">
+select count(*)
+from classList
+where CLASS_NO = #{searchVO.searchWord} 
+</select>
+
+<select id="selectScorePercentage" resultType="hashMap">
+select CLASS_ATTPOINT "attPoint", 
+CLASS_TASKPOINT "taskPoint", 
+CLASS_MIDPOINT "midPoint", 
+CLASS_FINPOINT "finPoint"
+from class
+where class_no = #{classNo}
+</select>
+
+<select id="selectNullScoreList" resultType="kr.or.ddit.vo.ClassListVO">
+select mem_no, mem_name, NVL(CLASS_MID,0) as "CLASS_MID", NVL(CLASS_FIN,0) as  "CLASS_FIN", class_no
+from CLASSLIST, MEMBER
+where class_no = #{classNo}
+and  mem_id = mem_no 
+order by mem_name
+</select>
+
+
+<update id="updateScore">
+update CLASSLIST
+set class_mid = #{classMid},
+class_fin = #{classFin}
+where mem_no = #{memNo}
+and class_no = #{classNo}
+</update>
+
+<update id="totalScoreProc" statementType="CALLABLE" parameterType="map"> 
+{
+	CALL PROC_TEST_CLASS_SOCRE(
+   #{classNo, mode=IN, jdbcType=VARCHAR, javaType=String}, 
+   #{memNo, mode=IN, jdbcType=VARCHAR, javaType=String}, 
+   #{classMid, mode=IN, jdbcType=NUMERIC, javaType=Integer}, 
+   #{classFin, mode=IN, jdbcType=NUMERIC, javaType=Integer}
+)
+}
+</update>
+
+</mapper>

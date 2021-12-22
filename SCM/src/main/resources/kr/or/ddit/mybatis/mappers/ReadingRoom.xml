@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.off_fac.facilitymanage.dao.ReadingRoomDao">
+	<sql id="searchFrag">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<choose>
+				<when test="searchVO.searchType eq 'name'">
+						AND INSTR(FAC_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'result'">
+						AND INSTR(FAC_RESULT, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(FAC_NAME, #{searchVO.searchWord}) > 0
+						OR INSTR(FAC_RESULT, #{searchVO.searchWord}) > 0 )
+					</otherwise>
+			</choose>
+		</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM FACILITIES
+		 WHERE FAC_CODE = 'FC01'
+		  <include refid="searchFrag" />
+	</select>
+	
+	<!-- 모든 조회 -->
+	<select id="selectReadingRoomList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.FacilityVO">
+		SELECT B.*
+		FROM (
+	    	SELECT A.*, ROWNUM RNUM
+	        FROM (
+	            SELECT
+	                FAC_NO
+	              , FAC_NAME
+	              , FAC_NUMBER
+	              , FAC_PAY
+	              , FAC_RESULT
+	            FROM FACILITIES
+	           WHERE FAC_CODE = 'FC01'
+	             AND FAC_RESULT != 'D'
+	            <include refid="searchFrag" />
+	            ORDER BY FAC_CODE DESC
+	            ) A  
+	        ) B 
+	    WHERE RNUM BETWEEN #{startRow} and #{endRow}
+	      
+	</select>
+	
+	
+	<!-- 선택시설 -->
+	<select id="selectReadingRoom" parameterType="String" resultType="kr.or.ddit.vo.FacilityVO" >
+		SELECT
+		    FAC_NO
+		   , FAC_NAME
+		   , FAC_NUMBER
+		   , FAC_RESULT
+		FROM
+		    FACILITIES
+	   WHERE FAC_NO = #{facNo}
+	</select>
+	
+	<!-- 업데이트용 update -->
+	<update id="updateReadingRoom" parameterType="kr.or.ddit.vo.FacilityVO">
+		UPDATE FACILITIES
+		   SET FAC_NUMBER = #{facNumber, jdbcType=NUMERIC}
+			 , FAC_RESULT = #{facResult, jdbcType=VARCHAR}
+		 WHERE FAC_NO = #{facNo}
+	</update>
+	
+	
+	<!-- 삭제용 update -->
+	<update id="deleteReadingRoom" parameterType="kr.or.ddit.vo.FacilityVO">
+		UPDATE FACILITIES
+		   SET FAC_RESULT = 'D'
+		 WHERE FAC_NO = #{facNo}
+	</update>
+	
+	<!-- 생성용 insert -->
+	<insert id="insertReadingRoom" parameterType="kr.or.ddit.vo.FacilityVO">
+		<selectKey keyProperty="facNo" resultType="String" order="BEFORE">
+			(SELECT NVL(MAX(TO_NUMBER(FAC_NO)), 0) + 1 
+			   FROM FACILITIES
+			  WHERE FAC_CODE = 'FC01')
+		</selectKey>
+		INSERT INTO FACILITIES (
+			  FAC_NO
+			, FAC_CODE
+			, FAC_NAME
+			, FAC_NUMBER
+		) VALUES (
+			  #{facNo, jdbcType=VARCHAR}
+			, 'FC01'
+			, #{facName, jdbcType=VARCHAR}
+			, #{facNumber, jdbcType=NUMERIC}
+		)
+	</insert>
+</mapper>

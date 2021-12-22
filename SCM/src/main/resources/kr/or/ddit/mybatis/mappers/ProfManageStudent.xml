@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.academic.professor.myStudent.dao.ManageStudentDAO">
+
+<sql id="whereClause">
+where docu_code = #{searchVO.searchWord2} 
+and docu_apf = #{searchVO.searchWord} 
+and docu_cancle = 'N'
+</sql>
+
+<!-- 승인해야할 리스트카운트(트랙/졸업) -->
+<select id="selectTotalToDoRecord" resultType="int">
+select count(*)
+from document
+<include refid="whereClause" />
+</select>
+
+<!-- 승인해야할 리스트(트랙/졸업) -->
+<select id="selectToDoList" resultType="kr.or.ddit.vo.DocumentVO">
+SELECT B.*
+FROM 
+(SELECT ROWNUM RNUM , A.*
+FROM 
+(
+
+select docu_no, docu_req, mem_name as "studentName",docu_state 
+<if test=' "DOC10".equals(searchVO.searchWord2)   '  >
+,track_name as "trackName" 
+, TRACK_NO  as "trackNo"
+</if>
+from document
+left outer join member on( mem_id = docu_req) 
+<if test=' "DOC10".equals(searchVO.searchWord2)   '  >
+left outer join track on( CAST(docu_cont as VARCHAR(20)) = track_no) 
+</if>
+<include refid="whereClause" />
+ORDER BY docu_no ASC
+) A
+)B
+WHERE RNUM BETWEEN  #{startRow} AND #{endRow}
+</select>
+
+<!-- 트랙신청승인하기 -->
+<update id="updateMyStudentTrack">
+update document 
+set DOCU_STATE = 'Y', 
+DOCU_REQNOW = 2
+where docu_no = #{docuNo}
+</update>
+
+
+<update id="cancleMyStudentTrack">
+update document 
+set DOCU_STATE = 'N', 
+DOCU_REQNOW = 1
+where docu_no = #{docuNo}
+</update>
+
+<select id="getMyStudent" resultType="kr.or.ddit.vo.MemberVO">
+select * 
+from member
+where mem_id = #{stuId}
+</select>
+
+<!-- 트랙신청승인 -->
+<update id="updateMemberTrackCol" parameterType="hashMap">
+update member
+set MEM_TRACK = #{trackNo}
+where mem_id= #{stuId}
+</update>
+<!-- 트랙신청취소 -->
+<update id="cancleMemberTrackCol">
+</update>
+
+<!-- 졸업신청승인 -->
+<update id="updateMemberGraduCol">
+update  member 
+set MEM_SEMESTER = 'RC07',
+MEM_GRADUATE = 'Y',
+MEM_GRADATE = '22/02/22'
+where mem_id = #{stuId}
+</update>
+</mapper>

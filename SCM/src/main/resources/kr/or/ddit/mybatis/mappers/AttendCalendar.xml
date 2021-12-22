@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.calendar.dao.AttendCalendarDAO">
+	
+	<!-- 마지막 날짜 + 1 (javascript는 날짜 -1되어 나오기 때문) -->
+	<select id="selectAllClassList" parameterType="Map" resultType="Map">
+	SELECT 
+		   C.*
+		FROM
+		    (SELECT
+		        A.CLASS_NO "classNo"
+		        ,A.MEM_NO "memNo"
+		        ,A.CLASS_SEMESTER "classSemester"
+		        ,A.CLASS_STATE "classState"
+		        ,B.CLASS_ROOM "classRoom"
+		        ,B.CLASS_NAME "className"
+		        ,B.CLASS_TIME "classTime"
+		        ,B.CLASS_POINT "classPoint"
+		    FROM
+		        CLASSLIST A
+		        LEFT OUTER JOIN
+		            CLASS B
+		        ON
+		            A.CLASS_NO = B.CLASS_NO
+		    WHERE
+		        A.CLASS_NO = #{classNo } 
+		    AND
+		    	A.MEM_NO = #{memNo} ) C
+	WHERE
+		"classState" = 'Y'    
+	</select>
+
+	<select id="getSchedule" resultType="kr.or.ddit.vo.ScheduleVO">
+	SELECT
+	    SCH_NO
+	   ,SCH_MEM
+	   ,SCH_CODE
+	   ,SCH_DELETE
+	   ,SCH_CONT
+	   ,TO_CHAR(SCH_SDATE, 'YYYY-MM-DD HH:mm:ss') SCH_SDATE
+	   ,TO_CHAR(SCH_EDATE, 'YYYY-MM-DD HH:mm:ss') SCH_EDATE
+	   ,SCH_LOCATION
+	   ,SCH_MANAGER
+	   ,SCH_STATE
+	   ,SCH_YEAR
+	   ,SCH_DECODE
+	FROM
+	    SCHEDULE
+	WHERE
+	    EXTRACT(YEAR FROM SYSDATE) = SCH_YEAR
+	AND
+	    (SCH_DECODE = 'SCED-SM1' OR SCH_DECODE = 'SCED-SM2')    
+	</select>
+
+	<select id="selectClassInfo" parameterType="String" resultType="kr.or.ddit.vo.ClassVO">
+	SELECT
+	    CLASS_NO
+	   ,MEM_NO
+	   ,FAC_NO
+	   ,CLASS_CODE
+	   ,COLLEGE_CODE
+	   ,CLASS_ROOM
+	   ,CLASS_NAME
+	   ,CLASS_TIME
+	   ,CLASS_POINT
+	   ,CLASS_PERSON
+	   ,CLASS_MAX
+	   ,CLASS_ON
+	   ,CLASS_DELETE
+	   ,CLASS_EXTEND
+	   ,MAJOR_CODE
+	   ,CLASS_SEMESTER
+	   ,CLASS_DIVIDE
+	   ,CLASS_DATE
+	   ,CLASS_ATTPOINT
+	   ,CLASS_TASKPOINT
+	   ,CLASS_MIDPOINT
+	   ,CLASS_FINPOINT
+	FROM
+	    CLASS
+	WHERE
+		CLASS_NO = #{classNo }
+	</select>
+</mapper>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.evaluation.dao.evaluationDao">
+
+<select id="getClassName" parameterType="String" resultType="String">
+	SELECT
+	   CLASS_NAME
+	FROM
+	    CLASS
+	WHERE
+	    CLASS_NO = #{classNo}
+</select>
+
+
+
+<select id="evaCheck" parameterType="kr.or.ddit.vo.ClassListVO" resultType="int">
+	SELECT
+	    count(*)
+	FROM
+	    EVALCONTENT
+	WHERE
+	    CLASS_NO = #{classNo }
+</select>
+
+
+<insert id="insertEvaForm" parameterType="kr.or.ddit.administration.vo.EvalcontentVO">
+	INSERT INTO EVALCONTENT (
+	    EVACON_NO
+	   ,CLASS_NO
+	   ,EVA_CONT
+	) VALUES (
+		(
+		SELECT 
+			NVL(MAX(EVACON_NO),0)+1 EVACON_NO 
+		FROM 
+			EVALCONTENT 
+		WHERE 
+			CLASS_NO = #{classNo} 
+		)
+		,#{classNo}
+		,#{evaCont}
+	)	
+</insert>
+
+<select id="stuClassCheck" parameterType="kr.or.ddit.vo.ClassListVO" resultType="String">
+	SELECT
+	    CLASSLIST_NO
+	FROM
+	    CLASSLIST
+	WHERE
+		MEM_NO = #{memNo }
+	AND
+		CLASS_NO = #{classNo }
+</select>
+
+<select id="stuEvaCheck" parameterType="kr.or.ddit.administration.vo.EvaluationVO" resultType="int">
+	SELECT
+	    COUNT(*)
+	FROM
+	    EVALUATION
+	WHERE
+		CLASSLIST_NO = #{classlistNo }
+	AND
+		CLASS_NO = #{classNo }
+</select>
+
+
+<select id="getEvalContent" parameterType="String" resultType="kr.or.ddit.administration.vo.EvalcontentVO">
+	SELECT
+	    EVACON_NO
+	   ,CLASS_NO
+	   ,EVA_CONT
+	FROM
+	    EVALCONTENT
+	WHERE
+		CLASS_NO = #{classNo }
+</select>
+
+
+<insert id="insertEvaluation" parameterType="kr.or.ddit.administration.vo.EvaluationVO">
+	INSERT INTO EVALUATION (
+	    CLASSLIST_NO
+	   ,EVECON_NO
+	   ,CLASS_NO
+	   ,EVE_CONT
+	   ,EVE_POINT
+	) VALUES (
+	    #{classlistNo, jdbcType=VARCHAR}
+	   ,#{eveconNo, jdbcType=VARCHAR}
+	   ,#{classNo, jdbcType=VARCHAR}
+	   ,#{eveCont, jdbcType=VARCHAR}
+	   ,#{evePoint, jdbcType=NUMERIC}
+	)
+</insert>
+
+<update id="insertEvaCheck" parameterType="kr.or.ddit.vo.ClassListVO">
+	UPDATE
+		CLASSLIST
+	SET
+		CLASS_CONT = #{classCont }
+	WHERE
+		CLASSLIST_NO = #{classlistNo }
+	AND
+		CLASS_NO = #{classNo }
+	AND
+		MEM_NO = #{memNo }	
+</update>
+
+<select id="getpropEvaResult" parameterType="String" resultType="kr.or.ddit.administration.vo.EvaluationVO">
+	SELECT
+		CLASSLIST_NO
+	   ,EVECON_NO
+	   ,CLASS_NO
+	   ,EVE_CONT
+	   ,EVE_POINT
+	FROM
+	    EVALUATION
+	WHERE
+		CLASS_NO = #{classNo}	    
+</select>
+
+<select id="getEvaCount" parameterType="String" resultType="String">
+	SELECT
+	    DISTINCT(CLASSLIST_NO)
+	FROM
+	    EVALUATION
+	WHERE
+	    CLASS_NO = #{classNo}	   
+</select>
+
+<select id="getQCount" parameterType="String" resultType="int">
+	SELECT
+        NVL(MAX(EVECON_NO),0) qCount
+	FROM
+	    EVALUATION
+	WHERE
+		CLASS_NO = #{classNo}	   
+</select>
+
+
+<select id="getpropEvaContResult" parameterType="String" resultType="String">
+	SELECT
+	   CLASS_CONT
+	FROM
+	    CLASSLIST
+	WHERE
+		CLASS_NO = #{classNo}  
+	AND
+    	CLASS_CONT  IS NOT NULL	
+</select>
+
+
+</mapper>

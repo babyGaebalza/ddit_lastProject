@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.reply.dao.ReplyDAO">
+
+
+	<select id="selectTotalRecord" parameterType="kr.or.ddit.vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM BOARD
+		WHERE REP_PARENT = #{detailSearch.boardNo}
+	</select>
+	
+	
+	<select id="selectReplyList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.BoardVO">
+		SELECT B.*
+		FROM (
+			SELECT A.*, ROWNUM RNUM 
+			FROM (
+				<![CDATA[
+				SELECT
+				    BOARD_NO
+				   ,(SELECT MEM_NAME FROM MEMBER A WHERE A.MEM_ID = B.MEM_NO) AS MEM_NO
+				   ,CLASS_NO
+				   ,BOARD_CODE
+				   ,BOARD_TITLE
+				   ,BOARD_DEADLINE
+				   ,BOARD_HITS
+				   ,BOARD_DATE
+				   ,BOARD_DELETE
+				   ,BOARD_FWRITER
+				   ,BOARD_FDATE
+				   ,BOARD_CONTENT
+				   ,REP_PARENT
+				   ,REP_PASS
+				FROM BOARD B
+				]]>
+				WHERE REP_PARENT = #{detailSearch.boardNo}
+				START WITH REP_PARENT IS NULL
+				CONNECT BY PRIOR BOARD_NO = REP_PARENT
+				ORDER SIBLINGS BY BOARD_NO DESC
+			)  A
+		)  B
+		WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	
+	<insert id="insertReply" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey keyProperty="boardNo" resultType="String" order="BEFORE">
+			SELECT NVL(MAX(BOARD_NO), 0) + 1
+			FROM BOARD
+		</selectKey>
+		INSERT INTO BOARD
+		(
+			    BOARD_NO
+			   ,MEM_NO
+			   ,CLASS_NO
+			   ,BOARD_CODE
+			   ,BOARD_TITLE
+			   ,BOARD_CONTENT
+			   ,BOARD_DATE
+			   ,BOARD_FWRITER
+			   ,BOARD_FDATE
+			   ,REP_PASS
+		    <if test="repParent neq null and repParent gt 0">
+		    	, REP_PARENT
+		    </if>
+	    )
+		VALUES
+		(
+				#{boardNo,jdbcType=VARCHAR}
+				,#{memNo, jdbcType=VARCHAR}
+				,#{classNo,jdbcType=VARCHAR}
+				,'BC_500'
+				,#{boardTitle,jdbcType=VARCHAR}
+				,#{boardContent,jdbcType=VARCHAR}
+				,SYSDATE
+				,#{memNo, jdbcType=VARCHAR}
+				,SYSDATE
+				,#{repPass,jdbcType=VARCHAR}
+			<if test="repParent neq null and repParent gt 0">
+		    	, #{repParent,jdbcType=VARCHAR}
+		    </if>
+		)
+	</insert>
+	
+	
+	
+	<select id="selectRepPass" resultType="string" parameterType="String">
+		SELECT REP_PASS
+		FROM BOARD
+		WHERE BOARD_NO = #{boardNo}
+	</select>
+	
+	
+	
+	
+	
+	<update id="updateReply" parameterType="kr.or.ddit.vo.BoardVO">
+		UPDATE BOARD
+		SET
+			BOARD_CONTENT = #{boardContent}
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	
+	<!-- 	계층 구조상의 덧글을 모두 지움. -->
+	<delete id="deleteReply" parameterType="kr.or.ddit.vo.BoardVO">
+		DELETE FROM BOARD
+        WHERE BOARD_NO IN (
+            SELECT BOARD_NO 
+            FROM BOARD
+            START WITH BOARD_NO = #{boardNo}
+            CONNECT BY PRIOR BOARD_NO = REP_PARENT
+        )
+	</delete>
+	
+	
+	
+
+</mapper>

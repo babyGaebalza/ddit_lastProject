@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.board.dao.BoardDao">
+
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'title'">
+						AND INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'writer'">
+						AND INSTR((SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = MEM_NO), #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'content'">
+						AND INSTR(BOARD_CONTENT, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0
+						OR INSTR((SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = MEM_NO), #{searchVO.searchWord}) > 0
+						OR INSTR(BOARD_CONTENT, #{searchVO.searchWord}) > 0)
+					</otherwise>
+				</choose>
+			</if>
+	</sql>
+
+
+
+
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		FROM BOARD
+		WHERE BOARD_CODE = 'BC_100'
+		AND BOARD_DELETE = 'N'
+		<include refid="searchFrag" />
+	</select>
+
+
+	<resultMap type="kr.or.ddit.vo.BoardVO" id="boardMap" autoMapping="true">
+		<id property="boardNo" column="NO"/>
+		<collection property="attatchList" ofType="kr.or.ddit.vo.AttatchVO" autoMapping="true" />
+	</resultMap>
+
+	<select id="selectNotice" parameterType="String" resultMap="boardMap">
+	SELECT
+	    F.BOARD_NO AS NO,
+	    F.MEM_NO,
+	    CLASS_NO,
+	    BOARD_CODE,
+	    BOARD_TITLE,
+	    BOARD_CONTENT,
+	    BOARD_HITS,
+	    BOARD_DATE,
+	    BOARD_DELETE,
+	    BOARD_FWRITER,
+	    BOARD_FDATE
+	    
+	    ,ATT_NO
+	    ,ATT_OGFILENAME
+	    ,ATT_SAVEFILENAME
+	    ,ATT_FANCYSIZE
+	FROM
+	    BOARD F LEFT OUTER JOIN ATTATCH A
+	    ON(F.BOARD_NO = A.BOARD_NO)
+	WHERE F.BOARD_NO = #{boardNo}
+	</select>
+
+
+	<select id="selectNoticeList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.BoardVO">
+	SELECT B.*
+	FROM (
+    	SELECT A.*, ROWNUM RNUM
+        FROM (
+            SELECT
+               BOARD_FWRITER
+               ,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = MEM_NO) AS MEM_NO
+                ,BOARD_TITLE, BOARD_HITS, BOARD_DATE, BOARD_NO
+            FROM BOARD
+            WHERE BOARD_DELETE = 'N'
+            AND BOARD_CODE = 'BC_100'
+            <include refid="searchFrag" />
+            ORDER BY BOARD_DATE DESC
+            ) A  
+        ) B 
+	WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+
+	<update id="incrementCount" parameterType="map">
+		UPDATE BOARD
+		SET
+		${incType} = ${incType} + 1
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+
+
+	<update id="deleteNotice" parameterType="String">
+		UPDATE BOARD
+		SET
+		BOARD_DELETE = 'Y'
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+
+
+
+	<update id="updateNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		UPDATE BOARD
+	    SET
+	    BOARD_TITLE = #{boardTitle,jdbcType=VARCHAR},
+	    BOARD_CONTENT = #{boardContent,jdbcType=CLOB}
+		WHERE BOARD_NO = #{boardNo,jdbcType=VARCHAR}
+	</update>
+
+
+
+
+<insert id="insertNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey keyProperty="boardNo" resultType="String" order="BEFORE">
+			SELECT BOARD_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+			INSERT INTO BOARD (
+			        BOARD_NO,
+				    MEM_NO,
+				    BOARD_CODE,
+				    BOARD_TITLE,
+				    BOARD_HITS,
+				    BOARD_FWRITER,
+				    BOARD_CONTENT
+			) VALUES (
+			    #{boardNo,jdbcType=VARCHAR}
+			    ,'202110002'
+			    ,'BC_100'
+			    ,#{boardTitle,jdbcType=VARCHAR}
+				,0
+				,'202110002'
+				,#{boardContent,jdbcType=CLOB}
+			)
+	</insert>
+
+	<select id="selectLatestNoticeList" resultType="kr.or.ddit.vo.BoardVO">
+		WITH NOTICE AS (
+		    SELECT
+		        N.*
+		      , ROWNUM RNUM
+		    FROM
+		        (
+		            SELECT
+		                BOARD_NO
+		              , MEM_NAME
+		              , BOARD_TITLE
+		              , TO_CHAR(BOARD_DATE, 'YYYY/MM/DD') BOARD_DATE 
+		              , BOARD_HITS
+		              <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(memMajor)">
+		              , MAJOR_NAME 
+		              </if> 
+		            FROM
+		                BOARD, MEMBER
+		                <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(memMajor)">
+		                , MAJOR
+		                </if>
+		            WHERE
+		            	MEM_NO = MEM_ID
+		            AND BOARD_CODE = #{boardCode}
+		            AND BOARD_DELETE = 'N'
+		            <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(memMajor)"> 
+			            AND BOARD.MAJOR_CODE = MAJOR.MAJOR_CODE
+		            	AND BOARD.MAJOR_CODE = #{memMajor}
+		            </if>
+		            ORDER BY
+		                BOARD_DATE DESC
+		        ) N
+		) SELECT
+		    *
+		  FROM
+		    NOTICE
+		  WHERE
+		  <![CDATA[
+		    RNUM <= #{boardCount}
+		  ]]>
+	</select>
+	
+
+
+
+
+</mapper>

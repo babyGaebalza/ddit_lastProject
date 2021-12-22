@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_man.classnotice.dao.ClassNoticeDao">
+
+	<sql id="searchFrag">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="searchVO.searchType eq 'title'">
+						AND INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'writer'">
+						AND INSTR(BOARD_FWRITER, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="searchVO.searchType eq 'content'">
+						AND INSTR(BOARD_CONTENT, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND
+						(INSTR(BOARD_TITLE, #{searchVO.searchWord}) > 0
+						OR INSTR(BOARD_FWRITER, #{searchVO.searchWord}) > 0
+						OR INSTR(BOARD_CONTENT, #{searchVO.searchWord}) > 0)
+					</otherwise>
+				</choose>
+			</if>
+	</sql>
+	
+	<select id="selectTotalCount" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		  FROM BOARD
+		 WHERE BOARD_CODE = 'BC_300'
+		<include refid="searchFrag" />
+	</select>
+	
+	<!-- 리스트 출력 -->
+	<select id="selectCNoticeList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.BoardVO">
+	SELECT B.*
+	FROM (
+    	SELECT A.*, ROWNUM RNUM
+		FROM (
+			SELECT
+				  BOARD_NO
+				, BOARD_TITLE
+				, BOARD_FWRITER 
+				, TO_CHAR(BOARD_DATE, 'YY-MM-DD') AS BOARD_DATE
+				, BOARD_HITS
+			FROM BOARD
+			WHERE BOARD_DELETE = 'N'
+			  AND BOARD_CODE = 'BC_300'
+			<include refid="searchFrag" />
+			ORDER BY BOARD_DATE DESC
+			) A  
+		) B 
+	WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<resultMap type="kr.or.ddit.vo.BoardVO" id="boardMap" autoMapping="true">
+		<id property="boardNo" column="NO"/>
+		<collection property="attatchList" ofType="kr.or.ddit.vo.AttatchVO" autoMapping="true" />
+	</resultMap>
+	
+	<!-- 상세조회 -->
+	<select id="selectCNotice" parameterType="String" resultMap="boardMap">
+	SELECT
+		  F.BOARD_NO AS NO
+		, F.MEM_NO
+		, BOARD_CODE
+		, BOARD_TITLE
+		, BOARD_CONTENT
+		, BOARD_HITS
+		, TO_CHAR(BOARD_DATE, 'YY-MM-DD') AS BOARD_DATE
+		, BOARD_FWRITER
+		, BOARD_FDATE
+		
+		,ATT_NO
+	    ,ATT_OGFILENAME
+	    ,ATT_SAVEFILENAME
+	    ,ATT_FANCYSIZE
+	FROM
+	    BOARD F LEFT OUTER JOIN ATTATCH A
+	       ON(F.BOARD_NO = A.BOARD_NO)
+	WHERE F.BOARD_NO = #{boardNo}
+	  AND F.BOARD_CODE = 'BC_300'
+	</select>
+	
+	<update id="incrementCount" parameterType="map">
+		UPDATE BOARD
+		SET
+		${incType} = ${incType} + 1
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	<!-- 수정 -->
+	<update id="updateCNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		UPDATE BOARD
+	       SET BOARD_TITLE = #{boardTitle, jdbcType=VARCHAR}
+			 , BOARD_CONTENT = #{boardContent, jdbcType=VARCHAR}
+			 , BOARD_FDATE = TO_DATE(SYSDATE, 'YYYY-MM-DD')
+			 , BOARD_FWRITER = #{boardFwriter, jdbcType=VARCHAR}
+		 WHERE BOARD_NO = #{boardNo, jdbcType=VARCHAR}
+	</update>
+	
+	<!-- 삭제 -->
+	<update id="deleteCNotice" parameterType="String">
+		UPDATE BOARD
+		   SET BOARD_DELETE = 'Y'
+		 WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	<!-- 입력 -->
+	<insert id="insertCNotice" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey keyProperty="boardNo" resultType="String" order="BEFORE">
+			SELECT BOARD_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		INSERT INTO BOARD (
+				  BOARD_NO
+				, MEM_NO
+				, CLASS_NO
+				, BOARD_CODE
+				, BOARD_TITLE
+				, BOARD_DEADLINE
+				, BOARD_HITS
+				, BOARD_FWRITER
+				, BOARD_CONTENT
+			) VALUES (
+				  #{boardNo, jdbcType=VARCHAR}
+				, #{memNo, jdbcType=VARCHAR}
+				, #{classNo, jdbcType=VARCHAR}
+				, 'BC_300'
+				, #{boardTitle, jdbcType=VARCHAR}
+				, TO_DATE(#{boardDeadline, jdbcType=DATE}, 'YYYY-MM-DD')
+				, 0
+				, #{boardFwriter, jdbcType=VARCHAR}
+				, #{boardContent, jdbcType=CLOB}
+		)
+	</insert>
+	
+</mapper>

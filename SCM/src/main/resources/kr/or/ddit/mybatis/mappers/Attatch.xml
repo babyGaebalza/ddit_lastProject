@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.attatch.dao.AttatchDAO">
+
+	<insert id="insertAttatches" parameterType="kr.or.ddit.vo.BoardVO">
+		<selectKey resultType="int" keyProperty="startAttNo" order="BEFORE">
+			SELECT NVL(MAX(TO_NUMBER(ATT_NO)), 0) +1
+			FROM ATTATCH
+		</selectKey>
+		INSERT ALL
+		<foreach collection="attatchList" item="atch" index="idx">
+			INTO ATTATCH (
+			    ATT_NO,    BOARD_NO,
+			    ATT_OGFILENAME,    ATT_SAVEFILENAME,
+			    ATT_MIME,    ATT_FILESIZE,
+			    ATT_FANCYSIZE
+			) VALUES (
+			   #{startAttNo}+#{idx},
+			   #{boardNo,jdbcType=VARCHAR},
+			   #{atch.attOgfilename,jdbcType=VARCHAR},
+			   #{atch.attSavefilename,jdbcType=VARCHAR},
+			   #{atch.attMime,jdbcType=VARCHAR},
+			   #{atch.attFilesize,jdbcType=NUMERIC},
+			   #{atch.attFancysize,jdbcType=VARCHAR}
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	
+	</insert>
+	
+	<delete id="deleteAttatches" parameterType="kr.or.ddit.vo.BoardVO">
+		DELETE FROM ATTATCH
+		<where>
+			<choose>
+				<when test="delAttNos neq null and delAttNos.length gt 0">
+					<foreach collection="delAttNos" item="delAttNo" open="ATT_NO IN (" close=")" separator=",">
+						#{delAttNo}
+					</foreach>
+				</when>
+				<otherwise>
+					 BOARD_NO = #{boardNo}
+				</otherwise>
+			</choose>
+		</where>
+	</delete>
+	
+	<select id="selectAttatch" parameterType="int" resultType="kr.or.ddit.vo.AttatchVO">
+		SELECT ATT_NO, ATT_OGFILENAME, ATT_SAVEFILENAME, ATT_MIME, ATT_FILESIZE
+		FROM ATTATCH
+		WHERE ATT_NO = #{attNo}
+	</select>
+	
+	
+	
+	<select id="selectAttachForProfile" parameterType="kr.or.ddit.vo.MemberVO" resultType="kr.or.ddit.vo.AttatchVO">
+      SELECT
+			  ATT_NO
+			, ATT_COUNT
+			, BOARD_NO
+			, TASK_NO
+			, MEM_NO
+			, MAIL_NO
+			, ATT_OGFILENAME
+			, ATT_SAVEFILENAME
+			, ATT_MIME
+			, ATT_FILESIZE
+			, ATT_FANCYSIZE
+        FROM ATTATCH
+	   WHERE ATT_NO = #{attNo}
+   </select>
+   
+</mapper>

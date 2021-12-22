@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.administration.univ_aca.pay.dao.payTableDao">
+
+
+	 <sql id="searchFrag">
+	 		<if test='searchVO.searchWord2 neq "Y"'>
+				AND MEM_DELETE = 'N'
+			</if>
+	 		<if test='searchVO.searchWord2 eq "Y"'>
+				AND (MEM_DELETE = 'N' OR (MEM_DELETE = 'Y'))
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				<choose>
+					<when test="searchVO.searchType eq 'ADMIN'">
+					AND	(INSTR(USER_CODE, 'US01') > 0)
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'PROP'">
+					AND	INSTR(USER_CODE, 'US02') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'ASSIS'">
+					AND	INSTR(USER_CODE, 'US03') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<when test="searchVO.searchType eq 'STUD'">
+					AND	INSTR(USER_CODE, 'US04') > 0
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</when>
+					<otherwise>
+					AND
+						(INSTR(USER_CODE, 'US01') > 0
+						OR INSTR(USER_CODE, 'US02') > 0
+						OR INSTR(USER_CODE, 'US03') > 0
+						OR INSTR(USER_CODE, 'US04') > 0)
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+						AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE A.MEM_ID = MEM_ID), #{searchVO.searchWord}) > 0)
+						</if>
+					</otherwise>
+				</choose>
+			</if>
+
+	</sql> 
+	
+	 <sql id="searchFrag2">
+	 
+	 		<if test='searchVO.searchWord2 neq "Y"'>
+				AND MEM_DELETE = 'N'
+			</if>
+	 		<if test='searchVO.searchWord2 eq "Y"'>
+				AND (MEM_DELETE = 'N' OR (MEM_DELETE = 'Y'))
+			</if>
+			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchType)">
+				<choose>
+					<when test="searchVO.searchType eq 'ADMIN'">
+					AND	(INSTR(USER_CODE, 'US01') > 0)
+					</when>
+					<when test="searchVO.searchType eq 'PROP'">
+					AND	INSTR(USER_CODE, 'US02') > 0
+					</when>
+					<when test="searchVO.searchType eq 'ASSIS'">
+					AND	INSTR(USER_CODE, 'US03') > 0
+					</when>
+					<when test="searchVO.searchType eq 'STUD'">
+					AND	INSTR(USER_CODE, 'US04') > 0
+					</when>
+					<otherwise>
+					AND
+						(INSTR(USER_CODE, 'US01') > 0
+						OR INSTR(USER_CODE, 'US02') > 0
+						OR INSTR(USER_CODE, 'US03') > 0
+						OR INSTR(USER_CODE, 'US04') > 0)
+					</otherwise>
+				</choose>
+			</if>
+			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				AND (INSTR((SELECT DISTINCT MEM_NAME FROM MEMBER WHERE MEM_ID = C.MEM_ID), #{searchVO.searchWord}) > 0)
+			</if>
+	</sql> 
+
+
+
+	<select id="selectTotalRecord" resultType="int" parameterType="kr.or.ddit.vo.PagingVO">
+	SELECT 
+		COUNT(*)
+	FROM 
+		MEMBER A
+	WHERE 
+		(USER_CODE = 'US01'
+	OR
+		USER_CODE = 'US02'
+	OR
+		USER_CODE = 'US03')
+			<include refid="searchFrag" /> 
+	</select>
+
+	<resultMap type="kr.or.ddit.vo.MemberVO" id="payTableMap" autoMapping="true">
+		<id property="memId" column="MEM_ID"/>
+		<collection property="payTableList" ofType="kr.or.ddit.vo.PayTableVO" autoMapping="true" />
+	</resultMap>
+
+
+	<select id="selectPayTableList" parameterType="kr.or.ddit.vo.PagingVO" resultMap="payTableMap">
+	SELECT
+		MEM_ID
+		,USER_CODE
+		,MEM_NAME
+		,MEM_REG1
+		,MEM_EMPNO
+		,RANK_CODE
+		,(SELECT CATE_NAME1 FROM CATEGORY WHERE CATE_CODE = DEPT_CODE) DEPT_CODE
+		,(SELECT MAJOR_NAME FROM MAJOR WHERE MAJOR_CODE = MEM_MAJOR) MEM_MAJOR
+		,MEM_DELETE
+		,PAYTABLE_MEM
+		,PAYTABLE_DATE
+		,PAYTABLE_PAY
+	FROM(
+		SELECT E.*, ROWNUM RNUM
+		FROM (
+		
+			 SELECT * FROM   MEMBER C 
+                    LEFT OUTER JOIN       
+                    (
+                    SELECT B.* FROM (
+                                    SELECT PAYTABLE_MEM,MAX(PAYTABLE_DATE)AS PAYTABLE_DATE FROM PAYTABLE GROUP BY PAYTABLE_MEM
+                                    ) A 
+                                    LEFT OUTER JOIN
+                                    PAYTABLE B
+                                    ON A.PAYTABLE_DATE = B.PAYTABLE_DATE
+                    ) D
+                    ON C.MEM_ID = D.PAYTABLE_MEM
+                    
+					WHERE 
+						(USER_CODE = 'US01'
+					OR
+						USER_CODE = 'US02'
+					OR
+						USER_CODE = 'US03')
+		 			<include refid="searchFrag2" /> 
+			) E
+		) F
+		<![CDATA[   
+			WHERE  RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]>
+
+	</select>
+
+	<select id="selectPayTableDetail" parameterType="String" resultType="kr.or.ddit.vo.PayTableVO">
+		SELECT 
+		     (SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = PAYTABLE_MEM) PAYTABLE_MEM
+		   ,PAYTABLE_PAY
+		   ,PAYTABLE_DATE
+		   ,PAYTABLE_REASON
+		   ,PAYTABLE_NO
+		FROM
+			PAYTABLE A
+		WHERE
+			PAYTABLE_MEM = #{memId}
+		AND
+			((SELECT MAX(PAYTABLE_DATE) FROM PAYTABLE WHERE PAYTABLE_MEM = #{memId}) = A.PAYTABLE_DATE)
+	</select>
+
+	<select id="selectAccountDetail" parameterType="String" resultType="kr.or.ddit.vo.AccountVO">
+	SELECT
+	    ACCOUNT_NO
+	   ,(SELECT MEM_NAME FROM MEMBER WHERE MEM_ID = ACCOUNT_MEM) ACCOUNT_MEM
+	   ,ACCOUNT_BANK
+	   ,ACCOUNT_NUMBER
+	   ,ACCOUNT_DELETE
+	FROM
+	    ACCOUNT
+	WHERE
+		ACCOUNT_MEM = #{memId}
+	</select>
+
+
+
+
+	<select id="selectTotalTableDetailList" parameterType="kr.or.ddit.vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM
+			PAYTABLE
+		WHERE
+			PAYTABLE_MEM = #{searchVO.searchWord2}
+	</select>
+	
+	<select id="selectPayTableDetailList" parameterType="kr.or.ddit.vo.PagingVO" resultType="kr.or.ddit.vo.PayTableVO">
+		SELECT 
+		    PAYTABLE_MEM
+		   ,PAYTABLE_PAY
+		   ,PAYTABLE_DATE
+		   ,PAYTABLE_REASON
+		   ,PAYTABLE_NO
+		FROM
+			PAYTABLE
+		WHERE
+			PAYTABLE_MEM = #{searchVO.searchWord2}
+	</select>
+
+
+	<insert id="insertPayTable" parameterType="kr.or.ddit.vo.PayTableVO">
+		<selectKey keyProperty="paytableNo" resultType="String" order="BEFORE">
+			(SELECT NVL(MAX(TO_NUMBER(PAYTABLE_NO)), 0) + 1 FROM PAYTABLE)
+		</selectKey>
+		INSERT INTO PAYTABLE (
+				    PAYTABLE_MEM
+				   ,PAYTABLE_PAY
+				   ,PAYTABLE_REASON
+				   ,PAYTABLE_NO
+				) VALUES (
+					#{paytableMem}
+					,#{paytablePay}
+					,#{paytableReason}
+					,#{paytableNo}
+				)
+	</insert>
+	
+	
+	<insert id="insertAccount" parameterType="kr.or.ddit.vo.AccountVO">
+		<selectKey keyProperty="accountNo" resultType="String" order="BEFORE">
+			(SELECT NVL(MAX(TO_NUMBER(ACCOUNT_NO)), 0) + 1 FROM ACCOUNT)
+		</selectKey>
+		INSERT INTO ACCOUNT (
+		    ACCOUNT_NO
+		   ,ACCOUNT_MEM
+		   ,ACCOUNT_BANK
+		   ,ACCOUNT_NUMBER
+		) VALUES (
+			#{accountNo, jdbcType=VARCHAR}
+			,#{accountMem, jdbcType=VARCHAR}
+			,#{accountBank, jdbcType=VARCHAR}
+			,#{accountNumber, jdbcType=VARCHAR}
+		)
+	</insert>
+
+
+	<update id="updateAccount" parameterType="kr.or.ddit.vo.AccountVO">
+		UPDATE 
+			ACCOUNT
+		SET
+			ACCOUNT_BANK = #{accountBank, jdbcType=VARCHAR}
+			,ACCOUNT_NUMBER = #{accountNumber, jdbcType=VARCHAR}
+		WHERE
+			ACCOUNT_MEM = #{accountMem, jdbcType=VARCHAR}
+	</update>	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	<insert id="inputPush" parameterType="kr.or.ddit.vo.PushVO">
+		<selectKey keyProperty="pushNo" resultType="String" order="BEFORE">
+			SELECT NVL(MAX(TO_NUMBER(PUSH_NO ))+1, 1) FROM PUSH
+		</selectKey>
+		<foreach collection="whoList" item="item" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" " index="index">		
+				
+			INTO PUSH (
+				PUSH_NO
+				,PUSH_MEM
+				,PUSH_CODE
+				,PUSH_TITLE
+				,PUSH_CONT
+			)
+			VALUES
+				(
+					#{pushNo}+#{index}
+					,#{item.memId}
+					,'P04'
+					,#{pushTitle}
+					,#{pushCont}
+				)
+		</foreach>            
+	</insert>
+
+
+	<select id="selectWho" parameterType="String" resultType="kr.or.ddit.vo.MemberVO">
+		SELECT 
+			MEM_ID 
+		FROM 
+			MEMBER 
+		WHERE
+			(DEPT_CODE = 'D4C2')
+		OR
+			MEM_ID = #{who, jdbcType=VARCHAR}
+	</select>
+
+</mapper>
+
+
