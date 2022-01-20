@@ -175,7 +175,7 @@ public class LoginPageProcessController {
 	
 	//------------------------------------------------ 인증 처리 프로세스 ----------------------------------------------------------------
 	
-	public ServiceResult authCodeHandler(String authCode, KindOfSendCode kindOfSendCode, HttpSession session) {
+	private ServiceResult authCodeHandler(String authCode, KindOfSendCode kindOfSendCode, HttpSession session) {
 		ServiceResult result = null;
 		
 		String sessionSavedCode = (String)session.getAttribute(kindOfSendCode.getCamelCase() + "Code");
