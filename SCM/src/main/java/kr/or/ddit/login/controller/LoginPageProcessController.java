@@ -164,7 +164,7 @@ public class LoginPageProcessController {
 	// 인증용 코드 만료처리
 	@GetMapping(value="/login/removeCode.do", produces=MediaType.APPLICATION_JSON_UTF8_VALUE)
 	@ResponseBody
-	public ServiceResult findPassCodeTimeout(
+	public ServiceResult codeTimeout(
 			@RequestParam("kindOfSendCode") KindOfSendCode kindOfSendCode
 			, HttpSession session) {
 		
