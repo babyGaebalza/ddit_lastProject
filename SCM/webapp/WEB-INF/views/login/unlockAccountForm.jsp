@@ -69,10 +69,10 @@
   </div>
 </div>
 
-<form id="sendCodeForm" action="${pageContext.request.contextPath }/login/unlockAccount/sendCode.do" method="post" data-what="unlockAccount" data-send="N">
+<form:form id="sendCodeForm" action="${pageContext.request.contextPath }/login/unlockAccount/sendCode.do" method="post" data-what="unlockAccount" data-send="N">
 	<input type="hidden" name="memId"/>
 	<input type="hidden" name="memName"/>
 	<input type="hidden" name="memTel"/>
-</form>
+</form:form>
 
 <script type="text/javascript" src="${cPath }/resources/js/custom/login/loginPageProcess.js"></script>
